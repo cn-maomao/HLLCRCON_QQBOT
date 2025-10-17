@@ -102,6 +102,10 @@ async def handle_status_check(bot: Bot, event: Event):
         await status_check.finish(detailed_message)
         
     except Exception as e:
+        from nonebot.exception import FinishedException
+        # 如果是 NoneBot 的 FinishedException，直接重新抛出
+        if isinstance(e, FinishedException):
+            raise
         logger.error(f"状态检查失败: {e}")
         await status_check.finish("❌ 状态检查失败，请稍后重试")
 
@@ -170,6 +174,10 @@ async def handle_api_test(bot: Bot, event: Event):
         await api_test.finish(message)
         
     except Exception as e:
+        from nonebot.exception import FinishedException
+        # 如果是 NoneBot 的 FinishedException，直接重新抛出
+        if isinstance(e, FinishedException):
+            raise
         logger.error(f"API测试失败: {e}")
         await api_test.finish("❌ API测试失败，请检查配置")
 
@@ -187,6 +195,10 @@ async def handle_bot_restart(bot: Bot, event: Event):
         sys.exit(0)
         
     except Exception as e:
+        from nonebot.exception import FinishedException
+        # 如果是 NoneBot 的 FinishedException，直接重新抛出
+        if isinstance(e, FinishedException):
+            raise
         logger.error(f"重启失败: {e}")
         await bot_restart.finish("❌ 重启失败")
 

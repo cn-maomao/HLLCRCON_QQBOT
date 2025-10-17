@@ -29,6 +29,10 @@ class Config(BaseSettings):
     crcon_api_base_url_2: str = Field(default="http://127.0.0.1:8011/api", description="服务器2 API地址")
     crcon_api_token: str = Field(default="", description="CRCON API令牌")
     
+    # 服务器名称配置
+    server_name_1: str = Field(default="服务器1", description="服务器1名称")
+    server_name_2: str = Field(default="服务器2", description="服务器2名称")
+    
     # 日志配置
     log_level: str = Field(default="INFO", description="日志级别")
     log_file: str = Field(default="logs/bot.log", description="日志文件路径")
@@ -68,9 +72,22 @@ config = Config()
 
 def get_api_base_url(server_num: int = 1) -> str:
     """获取指定服务器的API基础URL"""
-    if server_num == 2:
+    if server_num == 1:
+        return config.crcon_api_base_url_1
+    elif server_num == 2:
         return config.crcon_api_base_url_2
-    return config.crcon_api_base_url_1
+    else:
+        raise ValueError(f"Invalid server number: {server_num}")
+
+
+def get_server_name(server_num: int = 1) -> str:
+    """获取指定服务器的名称"""
+    if server_num == 1:
+        return config.server_name_1
+    elif server_num == 2:
+        return config.server_name_2
+    else:
+        raise ValueError(f"Invalid server number: {server_num}")
 
 
 def validate_server_num(server_num: int) -> bool:
@@ -118,7 +135,7 @@ class Constants:
         "hurtgenforest_warfare": "许特根森林",
         "kursk_warfare": "库尔斯克",
         "omahabeach_warfare": "奥马哈海滩",
-        "purpleheartlane_warfare": "紫心巷",
+        "purpleheartlane_warfare": "紫心小道",
         "sainte-mere-eglise_warfare": "圣梅尔埃格利斯",
         "stalingrad_warfare": "斯大林格勒",
         "stmariedumont_warfare": "圣玛丽杜蒙",
@@ -162,6 +179,6 @@ class Constants:
 # 导出配置和常量
 __all__ = [
     "Config", "config", "Constants",
-    "get_api_base_url", "validate_server_num",
+    "get_api_base_url", "get_server_name", "validate_server_num",
     "is_admin_user", "is_admin_group", "is_player_group"
 ]

@@ -164,7 +164,7 @@ python bot.py
 | 4 | hurtgenforest_warfare | 许特根森林 |
 | 5 | kursk_warfare | 库尔斯克 |
 | 6 | omahabeach_warfare | 奥马哈海滩 |
-| 7 | purpleheartlane_warfare | 紫心巷 |
+| 7 | purpleheartlane_warfare | 紫心小道 |
 | 8 | sainte-mere-eglise_warfare | 圣梅尔埃格利斯 |
 | 9 | stalingrad_warfare | 斯大林格勒 |
 | 10 | stmariedumont_warfare | 圣玛丽杜蒙 |

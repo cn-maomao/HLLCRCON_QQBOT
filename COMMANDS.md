@@ -244,35 +244,71 @@
 
 **命令格式**:
 ```
-/换图 <地图名称> [服务器编号]
-/changemap <地图名称> [服务器编号]
+/换图 <地图名称或编号> [服务器编号]
+/changemap <地图名称或编号> [服务器编号]
+/切换地图 <地图名称或编号> [服务器编号]
 ```
 
 **参数说明**:
-- `地图名称`: 地图名称（支持中文名称和英文名称）
+- `地图名称或编号`: 地图名称或编号（支持中文名称、英文名称和编号）
 - `服务器编号`: 1 或 2，默认为 1
 
+**⚠️ 重要提示**:
+- 地图切换命令执行后，**预计1分钟后生效**
+- 机器人会提示"地图切换命令已执行"，这表示命令已成功发送到服务器
+- 实际切换时间取决于服务器当前状态（游戏进行中可能需要等待回合结束）
+
 **支持的地图**:
-- `奥马哈海滩` / `omaha`
-- `犹他海滩` / `utah`
-- `圣玛丽教堂` / `stmariedumont`
-- `圣梅尔埃格利斯` / `stmereglise`
-- `芬诺维尔` / `foy`
-- `紫心巷` / `purpleheartlane`
-- `卡朗坦` / `carentan`
-- `希尔400` / `hill400`
-- `霍特夫森林` / `hurtgenforest`
-- `库尔斯克` / `kursk`
-- `斯大林格勒` / `stalingrad`
-- `雷马根` / `remagen`
-- `埃尔森博恩岭` / `elsenbornridge`
-- `德赖斯拉格` / `drielskag`
+
+**🎯 Warfare 模式地图（编号1-10）**:
+1. `carentan_warfare` - 卡朗坦
+2. `driel_warfare` - 德里尔
+3. `foy_warfare` - 芬诺维尔
+4. `kharkov_warfare` - 哈尔科夫
+5. `kursk_warfare` - 库尔斯克
+6. `omahabeach_warfare` - 奥马哈海滩
+7. `PHL_L_1944_Warfare` - 紫心小道
+8. `remagen_warfare` - 雷马根
+9. `stmereeglise_warfare` - 圣梅尔埃格利斯
+10. `stmariedumont_warfare` - 圣玛丽杜蒙
+
+**🎯 Offensive 模式地图（编号11-24）**:
+11. `stmereeglise_offensive_ger` - 圣梅尔埃格利斯（德军进攻）
+12. `stmereeglise_offensive_us` - 圣梅尔埃格利斯（美军进攻）
+13. `utahbeach_offensive_ger` - 犹他海滩（德军进攻）
+14. `utahbeach_offensive_us` - 犹他海滩（美军进攻）
+15. `driel_offensive_ger` - 德里尔（德军进攻）
+16. `driel_offensive_us` - 德里尔（美军进攻）
+17. `omahabeach_offensive_ger` - 奥马哈海滩（德军进攻）
+18. `omahabeach_offensive_us` - 奥马哈海滩（美军进攻）
+19. `kharkov_offensive_ger` - 哈尔科夫（德军进攻）
+20. `kharkov_offensive_us` - 哈尔科夫（美军进攻）
+21. `carentan_offensive_ger` - 卡朗坦（德军进攻）
+22. `carentan_offensive_us` - 卡朗坦（美军进攻）
+23. `stalingrad_offensive_ger` - 斯大林格勒（德军进攻）
+24. `stalingrad_offensive_us` - 斯大林格勒（美军进攻）
 
 **使用示例**:
 ```
-/换图 奥马哈海滩
-/换图 omaha 2
-/changemap utah 1
+# 使用编号换图（推荐）
+/换图 1              # 切换到卡朗坦 warfare
+/换图 5 2            # 在服务器2切换到库尔斯克 warfare
+
+# 使用完整地图名称
+/换图 foy_warfare
+/换图 stmereeglise_offensive_ger 2
+
+# 使用中文名称（部分支持）
+/换图 芬诺维尔
+/换图 奥马哈海滩 2
+```
+
+**成功提示示例**:
+```
+✅ 地图切换命令已执行
+🗺️ 目标地图：foy_warfare
+🎮 服务器：1
+⏰ 预计1分钟后生效
 ```
 
 ### 服务器设置
@@ -384,12 +420,13 @@
 
 ### 3. 地图名称
 
-支持使用中文名称或英文名称，不区分大小写：
+支持使用编号、中文名称或英文名称，不区分大小写：
 
 ```
-/换图 奥马哈海滩    # 中文名称
-/换图 omaha        # 英文名称
-/换图 OMAHA        # 大写也可以
+/换图 1             # 使用编号（推荐）
+/换图 芬诺维尔      # 中文名称
+/换图 foy_warfare   # 英文名称
+/换图 FOY_WARFARE   # 大写也可以
 ```
 
 ### 4. 引号使用
@@ -464,7 +501,7 @@
 ```
 1. /玩家列表          # 查看当前玩家
 2. /踢出 1-2 违规     # 踢出违规玩家
-3. /换图 utah         # 更换地图
+3. /换图 3            # 更换地图（使用编号）
 4. /状态              # 检查机器人状态
 ```
 
