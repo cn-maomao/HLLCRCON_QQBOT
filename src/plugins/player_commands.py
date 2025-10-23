@@ -22,6 +22,7 @@ from ..config import config, get_api_base_url, get_server_name, validate_server_
 # API配置
 CRCON_API_BASE_URL_1 = config.crcon_api_base_url_1
 CRCON_API_BASE_URL_2 = config.crcon_api_base_url_2
+CRCON_API_BASE_URL_3 = config.crcon_api_base_url_3
 CRCON_API_TOKEN = config.crcon_api_token
 
 # 注册指令
@@ -184,8 +185,8 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
             # 如果有参数，解析服务器编号
             if arg_text.isdigit():
                 server_num = int(arg_text)
-                if server_num not in [1, 2]:
-                    await server_info.finish("❌ 服务器编号只能是1或2")
+                if server_num not in [1, 2, 3]:
+                    await server_info.finish("❌ 服务器编号只能是1、2或3")
                 
                 server_msg = await get_server_info(server_num)
                 server_node = {
@@ -198,7 +199,7 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
                 }
                 nodes.append(server_node)
             else:
-                await server_info.finish("❌ 请输入正确的服务器编号（1或2），或不输入参数查看所有服务器")
+                await server_info.finish("❌ 请输入正确的服务器编号（1、2或3），或不输入参数查看所有服务器")
         
         # 发送转发消息
         try:
@@ -308,8 +309,8 @@ async def handle_vip_check(bot: Bot, event: Event, args: Message = CommandArg())
         # 检查是否指定了服务器编号
         if len(parts) > 1 and parts[1].isdigit():
             server_num = int(parts[1])
-            if server_num not in [1, 2]:
-                await vip_check.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await vip_check.finish("❌ 服务器编号只能是1、2或3")
         
         # 构建转发消息节点
         nodes = []
@@ -390,7 +391,7 @@ async def handle_vip_check(bot: Bot, event: Event, args: Message = CommandArg())
         # 如果没有指定服务器编号，查询所有服务器
         else:
             found_vips = []
-            for srv_num in [1, 2]:
+            for srv_num in [1, 2, 3]:
                 vip_info = await search_vip_in_server(player_name, srv_num)
                 if vip_info:
                     found_vips.append((srv_num, vip_info))
@@ -514,7 +515,7 @@ async def handle_vip_check(bot: Bot, event: Event, args: Message = CommandArg())
             else:
                 # 查询所有服务器的回退逻辑
                 found_vips = []
-                for srv_num in [1, 2]:
+                for srv_num in [1, 2, 3]:
                     vip_info = await search_vip_in_server(player_name, srv_num)
                     if vip_info:
                         found_vips.append((srv_num, vip_info))
@@ -625,9 +626,9 @@ async def handle_online_players(bot: Bot, event: Event, args: Message = CommandA
             try:
                 server_num = int(args_text)
                 if not validate_server_num(server_num):
-                    await online_players.finish("❌ 服务器编号只能是1或2")
+                    await online_players.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
-                await online_players.finish("❌ 服务器编号格式错误，请输入1或2")
+                await online_players.finish("❌ 服务器编号格式错误，请输入1、2或3")
         
         # 获取在线玩家信息
         async with await get_api_client(server_num) as client:
@@ -780,5 +781,5 @@ async def handle_help(bot: Bot, event: Event):
         message += "📊 服务器信息查询：/服务器信息 [服务器编号]\n"
         message += "💎 VIP状态查询：/查询vip 玩家名称 [服务器编号]\n"
         message += "👥 在线玩家查询：/在线玩家 [服务器编号]\n"
-        message += "📝 说明：服务器编号1或2，默认为1"
+        message += "📝 说明：服务器编号1、2或3，默认为1"
         await help_cmd.finish(message)

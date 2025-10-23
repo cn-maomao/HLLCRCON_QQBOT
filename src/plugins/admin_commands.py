@@ -26,6 +26,7 @@ from ..config import config
 # API配置
 CRCON_API_BASE_URL_1 = config.crcon_api_base_url_1
 CRCON_API_BASE_URL_2 = config.crcon_api_base_url_2
+CRCON_API_BASE_URL_3 = config.crcon_api_base_url_3
 CRCON_API_TOKEN = config.crcon_api_token
 
 
@@ -241,6 +242,8 @@ async def get_api_client(server_num: int = 1) -> CRCONAPIClient:
     """获取API客户端"""
     if server_num == 2:
         base_url = CRCON_API_BASE_URL_2
+    elif server_num == 3:
+        base_url = CRCON_API_BASE_URL_3
     else:
         base_url = CRCON_API_BASE_URL_1
     
@@ -296,8 +299,8 @@ async def handle_player_list(bot: Bot, event: Event, args: Message = CommandArg(
         arg_text = args.extract_plain_text().strip()
         if arg_text and arg_text.isdigit():
             server_num = int(arg_text)
-            if server_num not in [1, 2]:
-                await player_list.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await player_list.finish("❌ 服务器编号只能是1、2或3")
         
         async with await get_api_client(server_num) as client:
             players = await client.get_players()
@@ -329,8 +332,8 @@ async def handle_admin_kill(bot: Bot, event: Event, args: Message = CommandArg()
         # 解析参数
         if len(parts) > 1 and parts[1].isdigit():
             server_num = int(parts[1])
-            if server_num not in [1, 2]:
-                await admin_kill.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await admin_kill.finish("❌ 服务器编号只能是1、2或3")
             if len(parts) > 2:
                 reason = " ".join(parts[2:])
         elif len(parts) > 1:
@@ -397,8 +400,8 @@ async def handle_kick_player(bot: Bot, event: Event, args: Message = CommandArg(
         # 解析参数
         if len(parts) > 1 and parts[1].isdigit():
             server_num = int(parts[1])
-            if server_num not in [1, 2]:
-                await kick_player.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await kick_player.finish("❌ 服务器编号只能是1、2或3")
             if len(parts) > 2:
                 reason = " ".join(parts[2:])
         elif len(parts) > 1:
@@ -479,8 +482,8 @@ async def handle_ban_player(bot: Bot, event: Event, args: Message = CommandArg()
         # 解析其他参数
         if len(parts) > 2 and parts[2].isdigit():
             server_num = int(parts[2])
-            if server_num not in [1, 2]:
-                await ban_player.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await ban_player.finish("❌ 服务器编号只能是1、2或3")
             if len(parts) > 3:
                 reason = " ".join(parts[3:])
         elif len(parts) > 2:
@@ -550,8 +553,8 @@ async def handle_switch_now(bot: Bot, event: Event, args: Message = CommandArg()
         
         if len(parts) > 1 and parts[1].isdigit():
             server_num = int(parts[1])
-            if server_num not in [1, 2]:
-                await switch_now.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await switch_now.finish("❌ 服务器编号只能是1、2或3")
         
         async with await get_api_client(server_num) as client:
             players = await client.get_players()
@@ -612,8 +615,8 @@ async def handle_switch_death(bot: Bot, event: Event, args: Message = CommandArg
         
         if len(parts) > 1 and parts[1].isdigit():
             server_num = int(parts[1])
-            if server_num not in [1, 2]:
-                await switch_death.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await switch_death.finish("❌ 服务器编号只能是1、2或3")
         
         async with await get_api_client(server_num) as client:
             players = await client.get_players()
@@ -679,8 +682,8 @@ async def handle_change_map(bot: Bot, event: Event, args: Message = CommandArg()
         
         if len(parts) > 1 and parts[1].isdigit():
             server_num = int(parts[1])
-            if server_num not in [1, 2]:
-                await change_map.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await change_map.finish("❌ 服务器编号只能是1、2或3")
         
         # 如果输入的是数字，则从常用地图列表中选择
         if map_name.isdigit():
@@ -734,8 +737,8 @@ async def handle_set_idle_time(bot: Bot, event: Event, args: Message = CommandAr
         server_num = 1
         if len(parts) > 1 and parts[1].isdigit():
             server_num = int(parts[1])
-            if server_num not in [1, 2]:
-                await set_idle_time.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await set_idle_time.finish("❌ 服务器编号只能是1、2或3")
         
         if minutes < 0 or minutes > 120:
             await set_idle_time.finish("❌ 闲置时间应在0-120分钟之间")
@@ -844,8 +847,8 @@ async def handle_vip_query(bot: Bot, event: Event, args: Message = CommandArg())
         player_id = parts[0]
         server_num = int(parts[1]) if len(parts) > 1 else 1
         
-        if server_num not in [1, 2]:
-            await vip_query.finish("❌ 服务器编号只能是1或2")
+        if server_num not in [1, 2, 3]:
+                await vip_query.finish("❌ 服务器编号只能是1、2或3")
         
         # 获取API客户端并使用异步上下文管理器
         api_client = await get_api_client(server_num)
@@ -915,9 +918,12 @@ async def handle_vip_add(bot: Bot, event: Event, args: Message = CommandArg()):
                 
                 # 检查第三个参数是否为服务器编号
                 if len(parts) > 2:
-                    if parts[2] in ["1", "2", "1,2", "2,1", "全部"]:
+                    if parts[2] in ["1", "2", "3", "1,2", "2,1", "1,3", "3,1", "2,3", "3,2", "1,2,3", "全部"]:
                         if parts[2] == "全部" or "," in parts[2]:
-                            server_nums = [1, 2]
+                            if parts[2] == "全部":
+                                server_nums = [1, 2, 3]
+                            else:
+                                server_nums = [int(x) for x in parts[2].split(",")]
                         else:
                             server_nums = [int(parts[2])]
                         
@@ -929,9 +935,12 @@ async def handle_vip_add(bot: Bot, event: Event, args: Message = CommandArg()):
                         description = parts[2]
             else:
                 # 第二个参数不是时长，检查是否为服务器编号
-                if parts[1] in ["1", "2", "1,2", "2,1", "全部"]:
+                if parts[1] in ["1", "2", "3", "1,2", "2,1", "1,3", "3,1", "2,3", "3,2", "1,2,3", "全部"]:
                     if parts[1] == "全部" or "," in parts[1]:
-                        server_nums = [1, 2]
+                        if parts[1] == "全部":
+                            server_nums = [1, 2, 3]
+                        else:
+                            server_nums = [int(x) for x in parts[1].split(",")]
                     else:
                         server_nums = [int(parts[1])]
                     
@@ -1009,12 +1018,15 @@ async def handle_vip_remove(bot: Bot, event: Event, args: Message = CommandArg()
         # 解析服务器编号
         server_nums = [1]  # 默认服务器1
         if len(parts) > 1:
-            if parts[1] in ["1", "2"]:
+            if parts[1] in ["1", "2", "3"]:
                 server_nums = [int(parts[1])]
-            elif parts[1] in ["1,2", "2,1", "全部"]:
-                server_nums = [1, 2]
+            elif parts[1] in ["1,2", "2,1", "1,3", "3,1", "2,3", "3,2", "1,2,3", "全部"]:
+                if parts[1] == "全部":
+                    server_nums = [1, 2, 3]
+                else:
+                    server_nums = [int(x) for x in parts[1].split(",")]
             else:
-                await vip_remove.finish("❌ 服务器编号只能是1、2或全部")
+                await vip_remove.finish("❌ 服务器编号只能是1、2、3或全部")
         
         # 执行删除VIP操作
         success_servers = []
@@ -1083,8 +1095,8 @@ async def handle_map_objectives(bot: Bot, event: Event, args: Message = CommandA
         if arg_text:
             try:
                 server_num = int(arg_text)
-                if server_num not in [1, 2]:
-                    await map_objectives.finish("❌ 服务器编号只能是1或2")
+                if server_num not in [1, 2, 3]:
+                await map_objectives.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 await map_objectives.finish("❌ 服务器编号必须是数字")
         
@@ -1163,8 +1175,8 @@ async def handle_server_settings(bot: Bot, event: Event, args: Message = Command
         if arg_text:
             try:
                 server_num = int(arg_text)
-                if server_num not in [1, 2]:
-                    await server_settings.finish("❌ 服务器编号只能是1或2")
+                if server_num not in [1, 2, 3]:
+                await server_settings.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 await server_settings.finish("❌ 服务器编号必须是数字")
         
@@ -1234,16 +1246,16 @@ async def handle_set_autobalance(bot: Bot, event: Event, args: Message = Command
                 if len(parts) > 2:
                     try:
                         server_num = int(parts[2])
-                        if server_num not in [1, 2]:
-                            await set_autobalance.finish("❌ 服务器编号只能是1或2")
+                        if server_num not in [1, 2, 3]:
+                await set_autobalance.finish("❌ 服务器编号只能是1、2或3")
                     except ValueError:
                         await set_autobalance.finish("❌ 服务器编号必须是数字")
             else:
                 # 第二个参数为服务器编号
                 try:
                     server_num = int(parts[1])
-                    if server_num not in [1, 2]:
-                        await set_autobalance.finish("❌ 服务器编号只能是1或2")
+                    if server_num not in [1, 2, 3]:
+                    await set_autobalance.finish("❌ 服务器编号只能是1、2或3")
                 except ValueError:
                     await set_autobalance.finish("❌ 服务器编号必须是数字")
         
@@ -1310,8 +1322,8 @@ async def handle_set_switch_cooldown(bot: Bot, event: Event, args: Message = Com
         if len(parts) > 1:
             try:
                 server_num = int(parts[1])
-                if server_num not in [1, 2]:
-                    await set_switch_cooldown.finish("❌ 服务器编号只能是1或2")
+                if server_num not in [1, 2, 3]:
+                await set_switch_cooldown.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 await set_switch_cooldown.finish("❌ 服务器编号必须是数字")
         
@@ -1359,8 +1371,8 @@ async def handle_set_objectives(bot: Bot, event: Event, args: Message = CommandA
         if len(parts) > 1:
             try:
                 server_num = int(parts[1])
-                if server_num not in [1, 2]:
-                    await set_objectives.finish("❌ 服务器编号只能是1或2")
+                if server_num not in [1, 2, 3]:
+                await set_objectives.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 await set_objectives.finish("❌ 服务器编号必须是数字")
         
@@ -1483,8 +1495,8 @@ async def handle_map_list(bot: Bot, event: Event, args: Message = CommandArg()):
         # 解析服务器编号
         if arg_text and arg_text.isdigit():
             server_num = int(arg_text)
-            if server_num not in [1, 2]:
-                await map_list.finish("❌ 服务器编号只能是1或2")
+            if server_num not in [1, 2, 3]:
+                await map_list.finish("❌ 服务器编号只能是1、2或3")
         
         async with await get_api_client(server_num) as api_client:
             # 获取服务器地图轮换列表
@@ -1584,8 +1596,8 @@ async def handle_private_message(bot: Bot, event: Event, args: Message = Command
         if len(parts) > 2:
             try:
                 server_num = int(parts[2])
-                if server_num not in [1, 2]:
-                    await private_message.finish("❌ 服务器编号只能是1或2")
+                if server_num not in [1, 2, 3]:
+                await private_message.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 # 如果第三个参数不是数字，可能是消息内容的一部分
                 message_content = f"{message_content} {parts[2]}"
