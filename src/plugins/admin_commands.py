@@ -1724,12 +1724,12 @@ async def handle_broadcast_message(bot: Bot, event: Event, args: Message = Comma
 
 # 权限管理指令（需要超级管理员或主人权限）
 try:
-    from ..permissions import SUPER_ADMIN, OWNER, permission_manager, get_permission_level_name, PermissionLevel
+    from ..permissions import ADMIN, SUPER_ADMIN, OWNER, permission_manager, get_permission_level_name, PermissionLevel
     
     add_admin_cmd = on_command("添加管理员", aliases={"addadmin", "管理员添加"}, priority=5, permission=SUPER_ADMIN)
     remove_admin_cmd = on_command("删除管理员", aliases={"removeadmin", "管理员删除"}, priority=5, permission=SUPER_ADMIN)
-    list_admins_cmd = on_command("管理员列表", aliases={"listadmins", "查看管理员"}, priority=5, permission=SUPER_ADMIN)
-    permission_info_cmd = on_command("权限信息", aliases={"perminfo", "查看权限"}, priority=5, permission=SUPER_ADMIN)
+    list_admins_cmd = on_command("管理员列表", aliases={"listadmins", "查看管理员"}, priority=5, permission=ADMIN)
+    permission_info_cmd = on_command("权限信息", aliases={"perminfo", "查看权限"}, priority=5, permission=ADMIN)
     
     @add_admin_cmd.handle()
     async def handle_add_admin(bot: Bot, event: Event, args: Message = CommandArg()):
@@ -1842,13 +1842,16 @@ try:
             await list_admins_cmd.finish(message)
             
         except Exception as e:
-            logger.error(f"查看管理员列表失败: {e}")
-            await list_admins_cmd.finish("❌ 查看管理员列表失败，请稍后重试")
+            # FinishedException 是正常的框架行为，不记录为错误
+            if "FinishedException" not in str(type(e)):
+                logger.error(f"查看管理员列表失败: {e}")
+                await list_admins_cmd.finish("❌ 查看管理员列表失败，请稍后重试")
     
     @permission_info_cmd.handle()
     async def handle_permission_info(bot: Bot, event: Event, args: Message = CommandArg()):
         """查看用户权限信息"""
         try:
+            logger.info(f"权限信息命令被调用，用户ID: {event.get_user_id()}")
             args_text = args.extract_plain_text().strip()
             
             # 如果没有参数，查看自己的权限
@@ -1866,13 +1869,19 @@ try:
                 if not target_user_id.isdigit():
                     await permission_info_cmd.finish("❌ QQ号格式错误，请输入纯数字")
             
+            logger.info(f"查询目标用户权限: {target_user_id}")
+            
             # 获取用户权限
             user_level = permission_manager.get_user_permission(target_user_id)
             level_name = get_permission_level_name(user_level)
             
+            logger.info(f"用户 {target_user_id} 的权限级别: {user_level}, 名称: {level_name}")
+            
             message = f"👤 用户权限信息\n\n"
             message += f"🆔 QQ号：{target_user_id}\n"
             message += f"🔑 权限级别：{level_name}\n\n"
+            
+            logger.info(f"准备发送权限信息消息: {message[:50]}...")
             
             # 权限详情
             if user_level == PermissionLevel.OWNER:
@@ -1899,11 +1908,15 @@ try:
                 message += "• 查询VIP状态\n"
                 message += "• 查看帮助信息"
             
+            logger.info("准备发送权限信息回复")
             await permission_info_cmd.finish(message)
+            logger.info("权限信息回复已发送")
             
         except Exception as e:
-            logger.error(f"查看权限信息失败: {e}")
-            await permission_info_cmd.finish("❌ 查看权限信息失败，请稍后重试")
+            # FinishedException 是正常的框架行为，不记录为错误
+            if "FinishedException" not in str(type(e)):
+                logger.error(f"查看权限信息失败: {e}")
+                await permission_info_cmd.finish("❌ 查看权限信息失败，请稍后重试")
 
 except ImportError:
     logger.warning("权限管理模块未找到，跳过权限管理命令注册")
