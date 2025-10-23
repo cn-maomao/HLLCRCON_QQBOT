@@ -157,7 +157,7 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
         
         # 如果没有参数，显示所有服务器信息
         if not arg_text:
-            for server_num in [1, 2]:
+            for server_num in [1, 2, 3]:
                 try:
                     server_msg = await get_server_info(server_num)
                     server_node = {
@@ -213,7 +213,7 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
             # 回退到普通消息
             if not arg_text:
                 messages = []
-                for server_num in [1, 2]:
+                for server_num in [1, 2, 3]:
                     try:
                         server_msg = await get_server_info(server_num)
                         messages.append(server_msg)
@@ -749,7 +749,7 @@ async def handle_help(bot: Bot, event: Event):
         })
         
         # 添加使用说明
-        usage_msg = "📝 使用说明：\n• 服务器编号：1或2，默认为1\n• 玩家名称支持模糊匹配\n• 所有指令都支持别名"
+        usage_msg = "📝 使用说明：\n• 服务器编号：1、2或3，默认为1\n• 玩家名称支持模糊匹配\n• 所有指令都支持别名"
         forward_messages.append({
             "type": "node",
             "data": {
