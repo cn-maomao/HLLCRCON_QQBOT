@@ -1096,7 +1096,7 @@ async def handle_map_objectives(bot: Bot, event: Event, args: Message = CommandA
             try:
                 server_num = int(arg_text)
                 if server_num not in [1, 2, 3]:
-                await map_objectives.finish("❌ 服务器编号只能是1、2或3")
+                    await map_objectives.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 await map_objectives.finish("❌ 服务器编号必须是数字")
         
@@ -1176,7 +1176,7 @@ async def handle_server_settings(bot: Bot, event: Event, args: Message = Command
             try:
                 server_num = int(arg_text)
                 if server_num not in [1, 2, 3]:
-                await server_settings.finish("❌ 服务器编号只能是1、2或3")
+                    await server_settings.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 await server_settings.finish("❌ 服务器编号必须是数字")
         
@@ -1247,7 +1247,7 @@ async def handle_set_autobalance(bot: Bot, event: Event, args: Message = Command
                     try:
                         server_num = int(parts[2])
                         if server_num not in [1, 2, 3]:
-                await set_autobalance.finish("❌ 服务器编号只能是1、2或3")
+                            await set_autobalance.finish("❌ 服务器编号只能是1、2或3")
                     except ValueError:
                         await set_autobalance.finish("❌ 服务器编号必须是数字")
             else:
@@ -1255,7 +1255,7 @@ async def handle_set_autobalance(bot: Bot, event: Event, args: Message = Command
                 try:
                     server_num = int(parts[1])
                     if server_num not in [1, 2, 3]:
-                    await set_autobalance.finish("❌ 服务器编号只能是1、2或3")
+                        await set_autobalance.finish("❌ 服务器编号只能是1、2或3")
                 except ValueError:
                     await set_autobalance.finish("❌ 服务器编号必须是数字")
         
@@ -1323,7 +1323,7 @@ async def handle_set_switch_cooldown(bot: Bot, event: Event, args: Message = Com
             try:
                 server_num = int(parts[1])
                 if server_num not in [1, 2, 3]:
-                await set_switch_cooldown.finish("❌ 服务器编号只能是1、2或3")
+                    await set_switch_cooldown.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 await set_switch_cooldown.finish("❌ 服务器编号必须是数字")
         
@@ -1372,7 +1372,7 @@ async def handle_set_objectives(bot: Bot, event: Event, args: Message = CommandA
             try:
                 server_num = int(parts[1])
                 if server_num not in [1, 2, 3]:
-                await set_objectives.finish("❌ 服务器编号只能是1、2或3")
+                    await set_objectives.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 await set_objectives.finish("❌ 服务器编号必须是数字")
         
@@ -1597,7 +1597,7 @@ async def handle_private_message(bot: Bot, event: Event, args: Message = Command
             try:
                 server_num = int(parts[2])
                 if server_num not in [1, 2, 3]:
-                await private_message.finish("❌ 服务器编号只能是1、2或3")
+                    await private_message.finish("❌ 服务器编号只能是1、2或3")
             except ValueError:
                 # 如果第三个参数不是数字，可能是消息内容的一部分
                 message_content = f"{message_content} {parts[2]}"
@@ -1673,7 +1673,7 @@ async def handle_broadcast_message(bot: Bot, event: Event, args: Message = Comma
         # 检查最后一个参数是否为服务器编号
         if len(parts) > 1 and parts[1].isdigit():
             potential_server = int(parts[1])
-            if potential_server in [1, 2]:
+            if potential_server in [1, 2, 3]:
                 server_num = potential_server
                 message_content = parts[0]
             else:
