@@ -6,10 +6,18 @@ import time
 from datetime import datetime
 from nonebot import on_command, get_driver
 from nonebot.adapters.onebot.v11 import Bot, Event
-from nonebot.permission import SUPERUSER
 from loguru import logger
 
 from ..crcon_api import CRCONAPIClient
+
+# 权限导入
+try:
+    from ..permissions import OWNER
+    SYSTEM_PERMISSION = OWNER
+except ImportError:
+    from nonebot.permission import SUPERUSER
+    SYSTEM_PERMISSION = SUPERUSER
+    logger.warning("新权限系统未找到，系统命令使用传统SUPERUSER权限")
 
 # 获取配置
 from ..config import config
@@ -22,8 +30,8 @@ CRCON_API_TOKEN = config.crcon_api_token
 
 # 系统指令
 status_check = on_command("状态", aliases={"status", "机器人状态"}, priority=5)
-api_test = on_command("API测试", aliases={"apitest", "测试连接"}, priority=5, permission=SUPERUSER)
-bot_restart = on_command("重启机器人", aliases={"restart"}, priority=5, permission=SUPERUSER)
+api_test = on_command("API测试", aliases={"apitest", "测试连接"}, priority=5, permission=SYSTEM_PERMISSION)
+bot_restart = on_command("重启机器人", aliases={"restart"}, priority=5, permission=SYSTEM_PERMISSION)
 
 # 启动时间记录
 start_time = time.time()

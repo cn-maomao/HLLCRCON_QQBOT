@@ -7,12 +7,20 @@ from nonebot import on_command, get_driver
 from nonebot.adapters.onebot.v11 import Bot, Event, MessageSegment
 from nonebot.params import CommandArg
 from nonebot.adapters.onebot.v11 import Message
-from nonebot.permission import SUPERUSER
 from loguru import logger
 
 from ..crcon_api import CRCONAPIClient, Player, VipInfo
 
-# 获取配置
+# 尝试导入新权限系统，如果失败则使用旧的SUPERUSER
+try:
+    from ..permissions import ADMIN, SUPER_ADMIN, OWNER
+    # 为了向后兼容，将ADMIN权限作为默认管理员权限
+    DEFAULT_ADMIN_PERMISSION = ADMIN
+except ImportError:
+    from nonebot.permission import SUPERUSER
+    DEFAULT_ADMIN_PERMISSION = SUPERUSER
+    logger.warning("新权限系统未找到，使用传统SUPERUSER权限")
+
 from ..config import config
 
 # API配置
@@ -93,31 +101,98 @@ async def send_forward_message(bot: Bot, event: Event, nodes: List[dict], fallba
         await bot.send(event, fallback_message)
 
 
-# 管理员指令（需要超级用户权限）
-player_list = on_command("管理员玩家列表", aliases={"adminplayers", "管理玩家"}, priority=5, permission=SUPERUSER)
-admin_kill = on_command("击杀", aliases={"kill", "管理员击杀"}, priority=5, permission=SUPERUSER)
-kick_player = on_command("踢出", aliases={"kick"}, priority=5, permission=SUPERUSER)
-ban_player = on_command("封禁", aliases={"ban"}, priority=5, permission=SUPERUSER)
-switch_now = on_command("立即调边", aliases={"switch", "调边"}, priority=5, permission=SUPERUSER)
-switch_death = on_command("死后调边", aliases={"switchdeath"}, priority=5, permission=SUPERUSER)
-change_map = on_command("换图", aliases={"changemap", "切换地图"}, priority=5, permission=SUPERUSER)
-set_idle_time = on_command("设置闲置时间", aliases={"setidle"}, priority=5, permission=SUPERUSER)
-admin_help = on_command("管理帮助", aliases={"adminhelp"}, priority=5, permission=SUPERUSER)
+def parse_player_indices(indices_str: str) -> List[int]:
+    """
+    解析玩家序号字符串，支持单个序号、逗号分隔的多个序号和范围
+    
+    Args:
+        indices_str: 序号字符串，如 "1", "1,3,5", "1-5", "1,3-5,7"
+        
+    Returns:
+        List[int]: 解析后的序号列表
+        
+    Raises:
+        ValueError: 序号格式错误时抛出异常
+    """
+    indices = []
+    
+    # 按逗号分割
+    parts = indices_str.split(',')
+    
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+            
+        if '-' in part:
+            # 处理范围，如 "1-5"
+            try:
+                start, end = part.split('-', 1)
+                start = int(start.strip())
+                end = int(end.strip())
+                
+                if start > end:
+                    raise ValueError(f"范围起始值({start})不能大于结束值({end})")
+                if start < 1:
+                    raise ValueError(f"序号不能小于1")
+                if end > 100:
+                    raise ValueError(f"序号不能大于100")
+                    
+                indices.extend(range(start, end + 1))
+            except ValueError as e:
+                if "invalid literal" in str(e):
+                    raise ValueError(f"无效的范围格式: {part}")
+                raise
+        else:
+            # 处理单个序号
+            try:
+                index = int(part)
+                if index < 1:
+                    raise ValueError(f"序号不能小于1")
+                if index > 100:
+                    raise ValueError(f"序号不能大于100")
+                indices.append(index)
+            except ValueError as e:
+                if "invalid literal" in str(e):
+                    raise ValueError(f"无效的序号: {part}")
+                raise
+    
+    if not indices:
+        raise ValueError("未提供有效的序号")
+    
+    # 去重并排序
+    return sorted(list(set(indices)))
+
+
+# 管理员指令（需要管理员权限）
+player_list = on_command("管理员玩家列表", aliases={"adminplayers", "管理玩家"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+admin_kill = on_command("击杀", aliases={"kill", "管理员击杀"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+kick_player = on_command("踢出", aliases={"kick"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+ban_player = on_command("封禁", aliases={"ban"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+switch_now = on_command("立即调边", aliases={"switch", "调边"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+switch_death = on_command("死后调边", aliases={"switchdeath"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+change_map = on_command("换图", aliases={"changemap", "切换地图"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+set_idle_time = on_command("设置闲置时间", aliases={"setidle"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+admin_help = on_command("管理帮助", aliases={"adminhelp"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
 
 # VIP管理指令
-vip_query = on_command("VIP查询", aliases={"vipquery", "查询VIP"}, priority=5, permission=SUPERUSER)
-vip_add = on_command("添加VIP", aliases={"addvip", "VIP添加"}, priority=5, permission=SUPERUSER)
-vip_remove = on_command("删除VIP", aliases={"removevip", "VIP删除"}, priority=5, permission=SUPERUSER)
+vip_query = on_command("VIP查询", aliases={"vipquery", "查询VIP"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+vip_add = on_command("添加VIP", aliases={"addvip", "VIP添加"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+vip_remove = on_command("删除VIP", aliases={"removevip", "VIP删除"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
 
 # 地图管理指令
-map_objectives = on_command("地图点位", aliases={"objectives", "点位状态"}, priority=5, permission=SUPERUSER)
-set_objectives = on_command("设置点位", aliases={"setobjectives", "点位设置"}, priority=5, permission=SUPERUSER)
-map_list = on_command("地图列表", aliases={"maplist", "地图编号"}, priority=5, permission=SUPERUSER)
+map_objectives = on_command("地图点位", aliases={"objectives", "点位状态"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+set_objectives = on_command("设置点位", aliases={"setobjectives", "点位设置"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+map_list = on_command("地图列表", aliases={"maplist", "地图编号"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
 
 # 服务器设置指令
-server_settings = on_command("服务器设置", aliases={"serversettings", "设置查看"}, priority=5, permission=SUPERUSER)
-set_autobalance = on_command("设置自动平衡", aliases={"setautobalance", "自动平衡"}, priority=5, permission=SUPERUSER)
-set_switch_cooldown = on_command("设置调边冷却", aliases={"setswitchcooldown", "调边冷却"}, priority=5, permission=SUPERUSER)
+server_settings = on_command("服务器设置", aliases={"serversettings", "设置查看"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+set_autobalance = on_command("设置自动平衡", aliases={"setautobalance", "自动平衡"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+set_switch_cooldown = on_command("设置调边冷却", aliases={"setswitchcooldown", "调边冷却"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+
+# 消息管理指令
+private_message = on_command("私信玩家", aliases={"私信", "发消息"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
+broadcast_message = on_command("全体私信", aliases={"广播消息", "全体消息"}, priority=5, permission=DEFAULT_ADMIN_PERMISSION)
 
 # 常用地图列表 - 基于实际服务器轮换更新
 COMMON_MAPS = [
@@ -697,7 +772,7 @@ async def handle_admin_help(bot: Bot, event: Event):
             ("地图管理", "🗺️ 地图管理：\n  /换图 [地图名称/编号] [服务器编号] - 更换地图\n  /地图点位 [服务器编号] - 查看当前地图点位控制情况\n  /设置点位 点位配置 [服务器编号] - 设置地图点位位置"),
             ("服务器设置", "⚙️ 服务器设置：\n  /设置闲置时间 分钟数 [服务器编号] - 设置闲置踢出时间\n  /服务器设置 [服务器编号] - 查看服务器设置状态\n  /设置自动平衡 启用/禁用 [阈值] [服务器编号] - 设置自动人数平衡\n  /设置调边冷却 分钟数 [服务器编号] - 设置调边冷却时间"),
             ("VIP管理", "👑 VIP管理：\n  /VIP查询 玩家ID [服务器编号] - 查询VIP信息\n  /添加VIP 玩家ID [时长] [服务器编号] [描述] - 添加VIP\n  /删除VIP 玩家ID [服务器编号] - 删除VIP"),
-            ("使用说明", "📝 说明：\n  • 序号支持范围：1-5 或 1,3,5-7\n  • 封禁时长：数字(小时) 或 '永久'\n  • VIP时长：数字(小时) 或 '永久'，默认永久\n  • 点位配置：下中上中下 (上=第一个点位, 中=中间点位, 下=最后一个点位) 或 12321 (1=第一个点位, 2=中间点位, 3=最后一个点位)\n  • 服务器编号：1或2，默认为1；VIP支持'全部'同时操作两个服务器\n  • 所有管理功能需要超级用户权限"),
+            ("使用说明", "📝 说明：\n  • 序号支持范围：1-5 或 1,3,5-7\n  • 封禁时长：数字(小时) 或 '永久'\n  • VIP时长：数字(小时) 或 '永久'，默认永久\n  • 点位配置：下中上中下 (上=第一个点位, 中=中间点位, 下=最后一个点位) 或 12321 (1=第一个点位, 2=中间点位, 3=最后一个点位)\n  • 服务器编号：1或2，默认为1；VIP支持'全部'同时操作两个服务器\n  • 所有管理功能需要管理员权限"),
             ("使用示例", "💡 示例：\n  /管理员玩家列表 1\n  /击杀 1-5 1 违规行为\n  /封禁 3 24 1 恶意破坏\n  /换图 foy_warfare 2\n  /设置闲置时间 15 1\n  /地图点位 1\n  /设置点位 下中上中下 1\n  /服务器设置 1\n  /设置自动平衡 启用 2 1\n  /VIP查询 76561198123456789 1\n  /添加VIP 76561198123456789 72 全部 赞助用户\n  /删除VIP 76561198123456789 全部")
         ]
         
@@ -738,7 +813,7 @@ async def handle_admin_help(bot: Bot, event: Event):
         message += "  • VIP时长：数字(小时) 或 '永久'，默认永久\n"
         message += "  • 点位配置：下中上中下 (上=第一个点位, 中=中间点位, 下=最后一个点位) 或 12321 (1=第一个点位, 2=中间点位, 3=最后一个点位)\n"
         message += "  • 服务器编号：1或2，默认为1；VIP支持'全部'同时操作两个服务器\n"
-        message += "  • 所有管理功能需要超级用户权限\n\n"
+        message += "  • 所有管理功能需要管理员权限\n\n"
         message += "💡 示例：\n"
         message += "  /管理员玩家列表 1\n"
         message += "  /击杀 1-5 1 违规行为\n"
@@ -1485,3 +1560,350 @@ async def handle_map_list(bot: Bot, event: Event, args: Message = CommandArg()):
             raise
         logger.error(f"获取地图列表失败: {e}")
         await map_list.finish("❌ 获取地图列表失败，请稍后重试")
+
+
+@private_message.handle()
+async def handle_private_message(bot: Bot, event: Event, args: Message = CommandArg()):
+    """处理私信玩家指令"""
+    try:
+        arg_text = args.extract_plain_text().strip()
+        
+        if not arg_text:
+            await private_message.finish("❌ 请提供参数\n用法：/私信玩家 玩家序号 消息内容 [服务器编号]")
+        
+        parts = arg_text.split(maxsplit=2)
+        if len(parts) < 2:
+            await private_message.finish("❌ 参数不足\n用法：/私信玩家 玩家序号 消息内容 [服务器编号]")
+        
+        # 解析参数
+        player_indices_str = parts[0]
+        message_content = parts[1]
+        server_num = 1
+        
+        # 检查是否有第三个参数（服务器编号）
+        if len(parts) > 2:
+            try:
+                server_num = int(parts[2])
+                if server_num not in [1, 2]:
+                    await private_message.finish("❌ 服务器编号只能是1或2")
+            except ValueError:
+                # 如果第三个参数不是数字，可能是消息内容的一部分
+                message_content = f"{message_content} {parts[2]}"
+        
+        # 解析玩家序号
+        try:
+            player_indices = parse_player_indices(player_indices_str)
+        except ValueError as e:
+            await private_message.finish(f"❌ 玩家序号格式错误：{e}")
+        
+        # 获取API客户端和玩家列表
+        api_client = await get_api_client(server_num)
+        
+        async with api_client:
+            players = await api_client.get_players()
+        
+        if not players:
+            await private_message.finish(f"❌ 服务器{server_num}当前没有玩家在线")
+        
+        # 发送私信
+        success_count = 0
+        failed_players = []
+        
+        for index in player_indices:
+            if 1 <= index <= len(players):
+                player = players[index - 1]
+                try:
+                    async with api_client:
+                        success = await api_client.message_player(player.player_id, message_content)
+                    
+                    if success:
+                        success_count += 1
+                    else:
+                        failed_players.append(f"{index}({player.name})")
+                except Exception as e:
+                    logger.error(f"发送私信给玩家 {player.name} 失败: {e}")
+                    failed_players.append(f"{index}({player.name})")
+            else:
+                failed_players.append(f"{index}(序号无效)")
+        
+        # 构建结果消息
+        message = f"💬 私信发送结果\n"
+        message += "=" * 30 + "\n"
+        message += f"📝 消息内容：{message_content}\n"
+        message += f"🎮 服务器：{server_num}\n"
+        message += f"✅ 成功发送：{success_count} 人\n"
+        if failed_players:
+            message += f"❌ 发送失败：{', '.join(failed_players)}"
+        
+        await private_message.finish(message)
+        
+    except Exception as e:
+        from nonebot.exception import FinishedException
+        if isinstance(e, FinishedException):
+            raise
+        logger.error(f"发送私信失败: {e}")
+        await private_message.finish("❌ 发送私信失败，请稍后重试")
+
+
+@broadcast_message.handle()
+async def handle_broadcast_message(bot: Bot, event: Event, args: Message = CommandArg()):
+    """处理全体私信指令"""
+    try:
+        arg_text = args.extract_plain_text().strip()
+        
+        if not arg_text:
+            await broadcast_message.finish("❌ 请提供消息内容\n用法：/全体私信 消息内容 [服务器编号]")
+        
+        parts = arg_text.rsplit(maxsplit=1)
+        message_content = parts[0]
+        server_num = 1
+        
+        # 检查最后一个参数是否为服务器编号
+        if len(parts) > 1 and parts[1].isdigit():
+            potential_server = int(parts[1])
+            if potential_server in [1, 2]:
+                server_num = potential_server
+                message_content = parts[0]
+            else:
+                # 不是有效的服务器编号，当作消息内容的一部分
+                message_content = arg_text
+        else:
+            message_content = arg_text
+        
+        # 获取API客户端和玩家列表
+        api_client = await get_api_client(server_num)
+        
+        async with api_client:
+            players = await api_client.get_players()
+        
+        if not players:
+            await broadcast_message.finish(f"❌ 服务器{server_num}当前没有玩家在线")
+        
+        # 检查玩家数量限制
+        if len(players) > 100:
+            await broadcast_message.finish(f"❌ 当前在线玩家数量({len(players)})超过限制(100人)，请稍后重试")
+        
+        # 发送全体私信
+        success_count = 0
+        failed_players = []
+        
+        for i, player in enumerate(players, 1):
+            try:
+                async with api_client:
+                    success = await api_client.message_player(player.player_id, message_content)
+                
+                if success:
+                    success_count += 1
+                else:
+                    failed_players.append(f"{i}({player.name})")
+            except Exception as e:
+                logger.error(f"发送私信给玩家 {player.name} 失败: {e}")
+                failed_players.append(f"{i}({player.name})")
+        
+        # 构建结果消息
+        message = f"📢 全体私信发送结果\n"
+        message += "=" * 30 + "\n"
+        message += f"📝 消息内容：{message_content}\n"
+        message += f"🎮 服务器：{server_num}\n"
+        message += f"👥 目标玩家：{len(players)} 人\n"
+        message += f"✅ 成功发送：{success_count} 人\n"
+        if failed_players:
+            message += f"❌ 发送失败：{', '.join(failed_players[:10])}"  # 只显示前10个失败的玩家
+            if len(failed_players) > 10:
+                message += f" 等{len(failed_players)}人"
+        
+        await broadcast_message.finish(message)
+        
+    except Exception as e:
+        from nonebot.exception import FinishedException
+        if isinstance(e, FinishedException):
+            raise
+        logger.error(f"发送全体私信失败: {e}")
+        await broadcast_message.finish("❌ 发送全体私信失败，请稍后重试")
+
+
+# 权限管理指令（需要超级管理员或主人权限）
+try:
+    from ..permissions import SUPER_ADMIN, OWNER, permission_manager, get_permission_level_name, PermissionLevel
+    
+    add_admin_cmd = on_command("添加管理员", aliases={"addadmin", "管理员添加"}, priority=5, permission=SUPER_ADMIN)
+    remove_admin_cmd = on_command("删除管理员", aliases={"removeadmin", "管理员删除"}, priority=5, permission=SUPER_ADMIN)
+    list_admins_cmd = on_command("管理员列表", aliases={"listadmins", "查看管理员"}, priority=5, permission=SUPER_ADMIN)
+    permission_info_cmd = on_command("权限信息", aliases={"perminfo", "查看权限"}, priority=5, permission=SUPER_ADMIN)
+    
+    @add_admin_cmd.handle()
+    async def handle_add_admin(bot: Bot, event: Event, args: Message = CommandArg()):
+        """添加普通管理员"""
+        try:
+            operator_id = str(event.get_user_id())
+            args_text = args.extract_plain_text().strip()
+            
+            if not args_text:
+                await add_admin_cmd.finish("❌ 请提供要添加的用户QQ号\n格式：/添加管理员 <QQ号>")
+            
+            # 解析参数
+            parts = args_text.split()
+            if len(parts) != 1:
+                await add_admin_cmd.finish("❌ 参数格式错误\n格式：/添加管理员 <QQ号>")
+            
+            target_user_id = parts[0].strip()
+            
+            # 验证QQ号格式
+            if not target_user_id.isdigit():
+                await add_admin_cmd.finish("❌ QQ号格式错误，请输入纯数字")
+            
+            # 添加管理员
+            success, message = permission_manager.add_admin(target_user_id, operator_id)
+            
+            if success:
+                await add_admin_cmd.finish(f"✅ {message}\n👤 用户：{target_user_id}\n🔑 权限：普通管理员")
+            else:
+                await add_admin_cmd.finish(f"❌ {message}")
+                
+        except Exception as e:
+            logger.error(f"添加管理员失败: {e}")
+            await add_admin_cmd.finish("❌ 添加管理员失败，请稍后重试")
+    
+    @remove_admin_cmd.handle()
+    async def handle_remove_admin(bot: Bot, event: Event, args: Message = CommandArg()):
+        """删除普通管理员"""
+        try:
+            operator_id = str(event.get_user_id())
+            args_text = args.extract_plain_text().strip()
+            
+            if not args_text:
+                await remove_admin_cmd.finish("❌ 请提供要删除的用户QQ号\n格式：/删除管理员 <QQ号>")
+            
+            # 解析参数
+            parts = args_text.split()
+            if len(parts) != 1:
+                await remove_admin_cmd.finish("❌ 参数格式错误\n格式：/删除管理员 <QQ号>")
+            
+            target_user_id = parts[0].strip()
+            
+            # 验证QQ号格式
+            if not target_user_id.isdigit():
+                await remove_admin_cmd.finish("❌ QQ号格式错误，请输入纯数字")
+            
+            # 删除管理员
+            success, message = permission_manager.remove_admin(target_user_id, operator_id)
+            
+            if success:
+                await remove_admin_cmd.finish(f"✅ {message}\n👤 用户：{target_user_id}")
+            else:
+                await remove_admin_cmd.finish(f"❌ {message}")
+                
+        except Exception as e:
+            logger.error(f"删除管理员失败: {e}")
+            await remove_admin_cmd.finish("❌ 删除管理员失败，请稍后重试")
+    
+    @list_admins_cmd.handle()
+    async def handle_list_admins(bot: Bot, event: Event):
+        """查看管理员列表"""
+        try:
+            permissions = permission_manager.get_all_permissions()
+            
+            message = "👑 权限管理系统\n\n"
+            
+            # 主人列表
+            owners = permissions['owners']
+            message += f"🔱 主人 ({len(owners)}人)：\n"
+            if owners:
+                for i, user_id in enumerate(owners, 1):
+                    message += f"  {i}. {user_id}\n"
+            else:
+                message += "  暂无\n"
+            message += "\n"
+            
+            # 超级管理员列表
+            super_admins = permissions['super_admins']
+            message += f"⭐ 超级管理员 ({len(super_admins)}人)：\n"
+            if super_admins:
+                for i, user_id in enumerate(super_admins, 1):
+                    message += f"  {i}. {user_id}\n"
+            else:
+                message += "  暂无\n"
+            message += "\n"
+            
+            # 普通管理员列表
+            admins = permissions['admins']
+            message += f"🛡️ 普通管理员 ({len(admins)}人)：\n"
+            if admins:
+                for i, user_id in enumerate(admins, 1):
+                    message += f"  {i}. {user_id}\n"
+            else:
+                message += "  暂无\n"
+            
+            message += "\n📝 权限说明：\n"
+            message += "• 主人：拥有所有权限，可管理超级管理员\n"
+            message += "• 超级管理员：拥有全部管理命令 + 管理员管理权限\n"
+            message += "• 普通管理员：拥有全部管理命令（除管理员管理外）"
+            
+            await list_admins_cmd.finish(message)
+            
+        except Exception as e:
+            logger.error(f"查看管理员列表失败: {e}")
+            await list_admins_cmd.finish("❌ 查看管理员列表失败，请稍后重试")
+    
+    @permission_info_cmd.handle()
+    async def handle_permission_info(bot: Bot, event: Event, args: Message = CommandArg()):
+        """查看用户权限信息"""
+        try:
+            args_text = args.extract_plain_text().strip()
+            
+            # 如果没有参数，查看自己的权限
+            if not args_text:
+                target_user_id = str(event.get_user_id())
+            else:
+                # 解析参数
+                parts = args_text.split()
+                if len(parts) != 1:
+                    await permission_info_cmd.finish("❌ 参数格式错误\n格式：/权限信息 [QQ号]")
+                
+                target_user_id = parts[0].strip()
+                
+                # 验证QQ号格式
+                if not target_user_id.isdigit():
+                    await permission_info_cmd.finish("❌ QQ号格式错误，请输入纯数字")
+            
+            # 获取用户权限
+            user_level = permission_manager.get_user_permission(target_user_id)
+            level_name = get_permission_level_name(user_level)
+            
+            message = f"👤 用户权限信息\n\n"
+            message += f"🆔 QQ号：{target_user_id}\n"
+            message += f"🔑 权限级别：{level_name}\n\n"
+            
+            # 权限详情
+            if user_level == PermissionLevel.OWNER:
+                message += "🔱 主人权限包括：\n"
+                message += "• 所有管理命令\n"
+                message += "• 管理超级管理员\n"
+                message += "• 管理普通管理员\n"
+                message += "• 系统命令"
+            elif user_level == PermissionLevel.SUPER_ADMIN:
+                message += "⭐ 超级管理员权限包括：\n"
+                message += "• 所有管理命令\n"
+                message += "• 管理普通管理员\n"
+                message += "• 系统命令"
+            elif user_level == PermissionLevel.ADMIN:
+                message += "🛡️ 普通管理员权限包括：\n"
+                message += "• 玩家管理命令\n"
+                message += "• VIP管理命令\n"
+                message += "• 地图管理命令\n"
+                message += "• 服务器设置命令\n"
+                message += "• 消息管理命令"
+            else:
+                message += "👥 普通用户权限包括：\n"
+                message += "• 查看服务器信息\n"
+                message += "• 查询VIP状态\n"
+                message += "• 查看帮助信息"
+            
+            await permission_info_cmd.finish(message)
+            
+        except Exception as e:
+            logger.error(f"查看权限信息失败: {e}")
+            await permission_info_cmd.finish("❌ 查看权限信息失败，请稍后重试")
+
+except ImportError:
+    logger.warning("权限管理模块未找到，跳过权限管理命令注册")
