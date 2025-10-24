@@ -20,7 +20,7 @@ except ImportError:
     logger.warning("新权限系统未找到，系统命令使用传统SUPERUSER权限")
 
 # 获取配置
-from ..config import config
+from ..config import config, get_server_name
 driver = get_driver()
 
 # API配置
@@ -86,9 +86,9 @@ async def handle_status_check(bot: Bot, event: Event):
         
         # 测试API连接
         tasks = [
-            test_api_connection(CRCON_API_BASE_URL_1, "服务器1"),
-            test_api_connection(CRCON_API_BASE_URL_2, "服务器2"),
-            test_api_connection(CRCON_API_BASE_URL_3, "服务器3")
+            test_api_connection(CRCON_API_BASE_URL_1, get_server_name(1)),
+            test_api_connection(CRCON_API_BASE_URL_2, get_server_name(2)),
+            test_api_connection(CRCON_API_BASE_URL_3, get_server_name(3))
         ]
         
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -97,10 +97,11 @@ async def handle_status_check(bot: Bot, event: Event):
         detailed_message = "🔗 API连接状态：\n"
         
         for i, result in enumerate(results, 1):
+            server_name = get_server_name(i)
             if isinstance(result, Exception):
-                detailed_message += f"  服务器{i}：❌ 连接失败 ({result})\n"
+                detailed_message += f"  {server_name}：❌ 连接失败 ({result})\n"
             else:
-                detailed_message += f"  服务器{i}：{result['status']}\n"
+                detailed_message += f"  {server_name}：{result['status']}\n"
                 if result['status'] == "✅ 正常":
                     detailed_message += f"    响应时间：{result['response_time']}ms\n"
                     detailed_message += f"    在线玩家：{result['players']}人\n"
@@ -170,7 +171,8 @@ async def handle_api_test(bot: Bot, event: Event):
         message += "=" * 40 + "\n"
         
         for result in test_results:
-            message += f"🎮 服务器{result['server']}：{result['status']}\n"
+            server_name = get_server_name(result['server'])
+            message += f"🎮 {server_name}：{result['status']}\n"
             if result['status'] == "✅ 正常":
                 message += f"  游戏状态查询：{result['gamestate_time']}ms\n"
                 message += f"  玩家列表查询：{result['players_time']}ms\n"

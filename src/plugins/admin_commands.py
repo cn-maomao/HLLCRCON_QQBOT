@@ -21,7 +21,7 @@ except ImportError:
     DEFAULT_ADMIN_PERMISSION = SUPERUSER
     logger.warning("新权限系统未找到，使用传统SUPERUSER权限")
 
-from ..config import config
+from ..config import config, get_server_name
 
 # API配置
 CRCON_API_BASE_URL_1 = config.crcon_api_base_url_1
@@ -266,12 +266,13 @@ def parse_range(range_str: str) -> List[int]:
     return sorted(list(set(indices)))
 
 
-def format_player_list(players: List[Player]) -> str:
+def format_player_list(players: List[Player], server_num: int = 1) -> str:
     """格式化玩家列表显示"""
     if not players:
         return "❌ 当前没有在线玩家"
     
-    message = f"👥 在线玩家列表 (共 {len(players)} 人)\n"
+    server_name = get_server_name(server_num)
+    message = f"👥 {server_name} - 在线玩家列表 (共 {len(players)} 人)\n"
     message += "=" * 40 + "\n"
     
     allied_players = [p for p in players if p.team == "Allies"]
@@ -304,7 +305,7 @@ async def handle_player_list(bot: Bot, event: Event, args: Message = CommandArg(
         
         async with await get_api_client(server_num) as client:
             players = await client.get_players()
-            message = format_player_list(players)
+            message = format_player_list(players, server_num)
             await player_list.finish(message)
             
     except Exception as e:
@@ -695,18 +696,18 @@ async def handle_change_map(bot: Bot, event: Event, args: Message = CommandArg()
         
         async with await get_api_client(server_num) as client:
             # 添加调试日志
-            logger.info(f"尝试更换地图: {map_name} (服务器{server_num})")
+            logger.info(f"尝试更换地图: {map_name} ({get_server_name(server_num)})")
             success = await client.set_map(map_name)
             
             if success:
                 message = f"✅ 地图切换命令已执行\n"
                 message += f"🗺️ 目标地图：{map_name}\n"
-                message += f"🎮 服务器：{server_num}\n"
+                message += f"🎮 {get_server_name(server_num)}\n"
                 message += f"⏰ 预计1分钟后生效"
             else:
                 message = f"❌ 更换地图失败\n"
                 message += f"🗺️ 尝试的地图：{map_name}\n"
-                message += f"🎮 服务器：{server_num}\n"
+                message += f"🎮 {get_server_name(server_num)}\n"
                 message += f"可能原因：地图名称错误或服务器繁忙"
             
             await change_map.finish(message)
@@ -749,7 +750,7 @@ async def handle_set_idle_time(bot: Bot, event: Event, args: Message = CommandAr
             if success:
                 message = f"✅ 成功设置闲置踢出时间\n"
                 message += f"⏰ 新时间：{minutes} 分钟\n"
-                message += f"🎮 服务器：{server_num}"
+                message += f"🎮 {get_server_name(server_num)}"
             else:
                 message = f"❌ 设置闲置时间失败"
             
@@ -892,7 +893,7 @@ async def handle_vip_query(bot: Bot, event: Event, args: Message = CommandArg())
         else:
             message += f"⏰ VIP类型: 永久VIP\n"
         
-        message += f"🖥️ 服务器: {server_num}号服务器"
+        message += f"🖥️ {get_server_name(server_num)}"
         
         await vip_query.finish(message)
         
@@ -984,7 +985,7 @@ async def handle_vip_add(bot: Bot, event: Event, args: Message = CommandArg()):
                     success_servers.append(server_num)
                 
             except Exception as e:
-                logger.error(f"服务器{server_num}添加VIP失败: {e}")
+                logger.error(f"{get_server_name(server_num)}添加VIP失败: {e}")
                 failed_servers.append(server_num)
         
         # 构建结果消息
@@ -1068,7 +1069,7 @@ async def handle_vip_remove(bot: Bot, event: Event, args: Message = CommandArg()
                     success_servers.append(server_num)
                 
             except Exception as e:
-                logger.error(f"服务器{server_num}删除VIP失败: {e}")
+                logger.error(f"{get_server_name(server_num)}删除VIP失败: {e}")
                 failed_servers.append(server_num)
         
         # 构建结果消息
@@ -1122,19 +1123,28 @@ async def handle_map_objectives(bot: Bot, event: Event, args: Message = CommandA
             objective_scores = await api_client.get_team_objective_scores()
         
         # 构建消息
-        message = f"🗺️ 地图点位状态\n"
+        server_name = get_server_name(server_num)
+        message = f"🗺️ {server_name} - 地图点位状态\n"
         message += "=" * 30 + "\n"
-        message += f"🖥️ 服务器: {server_num}号服务器\n"
         
         # 显示当前地图
         if gamestate and gamestate.current_map:
-            from ..maplist import MapList
+            try:
+                from ...maplist import MapList
+            except ImportError:
+                # 如果无法导入maplist，使用简单的地图名称显示
+                MapList = None
+            
             if isinstance(gamestate.current_map, dict):
                 map_id = gamestate.current_map.get('map', {}).get('id', '') or gamestate.current_map.get('id', '')
                 game_mode = gamestate.current_map.get('game_mode', '')
                 
                 # 解析地图名称
-                map_name = MapList.parse_map_name(map_id)
+                if MapList:
+                    map_name = MapList.parse_map_name(map_id)
+                else:
+                    map_name = map_id  # 如果无法解析，直接显示原始名称
+                    
                 if game_mode == "offensive":
                     map_name += " · 攻防"
                 elif game_mode == "warfare":
@@ -1144,7 +1154,10 @@ async def handle_map_objectives(bot: Bot, event: Event, args: Message = CommandA
                 
                 message += f"🗺️ 当前地图: {map_name}\n"
             else:
-                map_name = MapList.parse_map_name(str(gamestate.current_map))
+                if MapList:
+                    map_name = MapList.parse_map_name(str(gamestate.current_map))
+                else:
+                    map_name = str(gamestate.current_map)
                 message += f"🗺️ 当前地图: {map_name}\n"
         else:
             message += f"🗺️ 当前地图: 未知\n"
@@ -1206,7 +1219,7 @@ async def handle_server_settings(bot: Bot, event: Event, args: Message = Command
         # 构建消息
         message = f"⚙️ 服务器设置状态\n"
         message += "=" * 30 + "\n"
-        message += f"🖥️ 服务器: {server_num}号服务器\n\n"
+        message += f"🖥️ {get_server_name(server_num)}\n\n"
         
         message += f"⏰ 闲置踢出时间: {idle_time} 分钟\n"
         message += f"⚖️ 自动人数平衡: {'✅ 启用' if autobalance_enabled else '❌ 禁用'}\n"
@@ -1290,7 +1303,7 @@ async def handle_set_autobalance(bot: Bot, event: Event, args: Message = Command
         # 构建结果消息
         message = f"⚖️ 自动平衡设置结果\n"
         message += "=" * 30 + "\n"
-        message += f"🖥️ 服务器: {server_num}号服务器\n"
+        message += f"🖥️ {get_server_name(server_num)}\n"
         message += f"✅ 自动平衡: {'启用' if enabled else '禁用'}\n"
         
         if threshold is not None:
@@ -1350,7 +1363,7 @@ async def handle_set_switch_cooldown(bot: Bot, event: Event, args: Message = Com
         if success:
             message = f"🔄 调边冷却设置成功\n"
             message += "=" * 30 + "\n"
-            message += f"🖥️ 服务器: {server_num}号服务器\n"
+            message += f"🖥️ {get_server_name(server_num)}\n"
             message += f"✅ 冷却时间: {cooldown_minutes} 分钟"
             
             await set_switch_cooldown.finish(message)
@@ -1412,7 +1425,7 @@ async def handle_set_objectives(bot: Bot, event: Event, args: Message = CommandA
             # 构建结果消息
             message = f"🗺️ 点位设置成功\n"
             message += "=" * 30 + "\n"
-            message += f"🖥️ 服务器: {server_num}号服务器\n"
+            message += f"🖥️ {get_server_name(server_num)}\n"
             message += f"📍 点位配置: {objective_config}\n\n"
             
             # 显示详细的点位设置
@@ -1519,7 +1532,7 @@ async def handle_map_list(bot: Bot, event: Event, args: Message = CommandArg()):
             content_sections = []
             
             # 添加标题
-            content_sections.append(("CRCON机器人", f"🗺️ 服务器{server_num} 地图轮换列表"))
+            content_sections.append(("CRCON机器人", f"🗺️ {get_server_name(server_num)} 地图轮换列表"))
             
             # 构建轮换地图列表
             if rotation_maps:
@@ -1527,10 +1540,7 @@ async def handle_map_list(bot: Bot, event: Event, args: Message = CommandArg()):
                 for i, map_data in enumerate(rotation_maps, 1):
                     # 使用MapList解析地图名称
                     try:
-                        import sys
-                        import os
-                        sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-                        from maplist import MapList
+                        from ...maplist import MapList
                         
                         # 处理不同格式的地图数据
                         if isinstance(map_data, dict):
@@ -1554,10 +1564,7 @@ async def handle_map_list(bot: Bot, event: Event, args: Message = CommandArg()):
             common_maps_content = "🎯 常用地图编号（换图时可直接使用编号）：\n"
             for i, map_name in enumerate(COMMON_MAPS, 1):
                 try:
-                    import sys
-                    import os
-                    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-                    from maplist import MapList
+                    from ...maplist import MapList
                     chinese_name = MapList.parse_map_name(map_name)
                     common_maps_content += f"{i:2d}. {chinese_name} ({map_name})\n"
                 except Exception as e:
@@ -1574,7 +1581,7 @@ async def handle_map_list(bot: Bot, event: Event, args: Message = CommandArg()):
             content_sections.append(("使用说明", usage_content))
             
             # 创建转发消息
-            nodes = create_forward_message(bot, f"🗺️ 服务器{server_num} 地图信息", content_sections)
+            nodes = create_forward_message(bot, f"🗺️ {get_server_name(server_num)} 地图信息", content_sections)
             
             # 发送转发消息
             await send_forward_message(bot, event, nodes)
@@ -1628,7 +1635,7 @@ async def handle_private_message(bot: Bot, event: Event, args: Message = Command
             players = await api_client.get_players()
         
         if not players:
-            await private_message.finish(f"❌ 服务器{server_num}当前没有玩家在线")
+            await private_message.finish(f"❌ {get_server_name(server_num)}当前没有玩家在线")
         
         # 发送私信
         success_count = 0
@@ -1655,7 +1662,7 @@ async def handle_private_message(bot: Bot, event: Event, args: Message = Command
         message = f"💬 私信发送结果\n"
         message += "=" * 30 + "\n"
         message += f"📝 消息内容：{message_content}\n"
-        message += f"🎮 服务器：{server_num}\n"
+        message += f"🎮 {get_server_name(server_num)}\n"
         message += f"✅ 成功发送：{success_count} 人\n"
         if failed_players:
             message += f"❌ 发送失败：{', '.join(failed_players)}"
@@ -1702,7 +1709,7 @@ async def handle_broadcast_message(bot: Bot, event: Event, args: Message = Comma
             players = await api_client.get_players()
         
         if not players:
-            await broadcast_message.finish(f"❌ 服务器{server_num}当前没有玩家在线")
+            await broadcast_message.finish(f"❌ {get_server_name(server_num)}当前没有玩家在线")
         
         # 检查玩家数量限制
         if len(players) > 100:
@@ -1729,7 +1736,7 @@ async def handle_broadcast_message(bot: Bot, event: Event, args: Message = Comma
         message = f"📢 全体私信发送结果\n"
         message += "=" * 30 + "\n"
         message += f"📝 消息内容：{message_content}\n"
-        message += f"🎮 服务器：{server_num}\n"
+        message += f"🎮 {get_server_name(server_num)}\n"
         message += f"👥 目标玩家：{len(players)} 人\n"
         message += f"✅ 成功发送：{success_count} 人\n"
         if failed_players:

@@ -12,7 +12,10 @@ from loguru import logger
 
 # 添加项目根目录到 Python 路径
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from maplist import MapList
+try:
+    from ...maplist import MapList
+except ImportError:
+    MapList = None
 
 from ..crcon_api import CRCONAPIClient, GameState, VipInfo
 
@@ -79,13 +82,19 @@ async def get_server_info(server_num: int) -> str:
                 elif game_mode == 'skirmish':
                     mode_text = " · 遭遇战"
                 
-                current_map_name = MapList.parse_map_name(map_id) + mode_text
+                if MapList:
+                    current_map_name = MapList.parse_map_name(map_id) + mode_text
+                else:
+                    current_map_name = map_id + mode_text
             else:
                 current_map_name = gamestate.current_map.get('pretty_name', 
                                  gamestate.current_map.get('name', '未知'))
         elif isinstance(gamestate.current_map, str):
             # 尝试解析字符串格式的地图ID
-            current_map_name = MapList.parse_map_name(gamestate.current_map)
+            if MapList:
+                current_map_name = MapList.parse_map_name(gamestate.current_map)
+            else:
+                current_map_name = gamestate.current_map
         
         # 处理下一张地图信息
         if isinstance(gamestate.next_map, dict):
@@ -106,13 +115,19 @@ async def get_server_info(server_num: int) -> str:
                 elif game_mode == 'skirmish':
                     mode_text = " · 遭遇战"
                 
-                next_map_name = MapList.parse_map_name(map_id) + mode_text
+                if MapList:
+                    next_map_name = MapList.parse_map_name(map_id) + mode_text
+                else:
+                    next_map_name = map_id + mode_text
             else:
                 next_map_name = gamestate.next_map.get('pretty_name', 
                                gamestate.next_map.get('name', '未知'))
         elif isinstance(gamestate.next_map, str):
             # 尝试解析字符串格式的地图ID
-            next_map_name = MapList.parse_map_name(gamestate.next_map)
+            if MapList:
+                next_map_name = MapList.parse_map_name(gamestate.next_map)
+            else:
+                next_map_name = gamestate.next_map
         
         # 构建消息
         server_name = get_server_name(server_num)
@@ -163,19 +178,19 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
                     server_node = {
                         "type": "node",
                         "data": {
-                            "name": f"服务器 {server_num}",
+                            "name": f"{get_server_name(server_num)}",
                             "uin": str(bot.self_id),
                             "content": server_msg
                         }
                     }
                     nodes.append(server_node)
                 except Exception as e:
-                    logger.error(f"获取服务器 {server_num} 信息失败: {e}")
-                    error_msg = f"🎮 服务器 {server_num} 状态信息\n" + "=" * 30 + "\n❌ 服务器连接失败"
+                    logger.error(f"获取{get_server_name(server_num)}信息失败: {e}")
+                    error_msg = f"🎮 {get_server_name(server_num)} 状态信息\n" + "=" * 30 + "\n❌ 服务器连接失败"
                     error_node = {
                         "type": "node",
                         "data": {
-                            "name": f"服务器 {server_num}",
+                            "name": f"{get_server_name(server_num)}",
                             "uin": str(bot.self_id),
                             "content": error_msg
                         }
@@ -192,7 +207,7 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
                 server_node = {
                     "type": "node",
                     "data": {
-                        "name": f"服务器 {server_num}",
+                        "name": f"{get_server_name(server_num)}",
                         "uin": str(bot.self_id),
                         "content": server_msg
                     }
@@ -218,8 +233,8 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
                         server_msg = await get_server_info(server_num)
                         messages.append(server_msg)
                     except Exception as e:
-                        logger.error(f"获取服务器 {server_num} 信息失败: {e}")
-                        messages.append(f"🎮 服务器 {server_num} 状态信息\n" + "=" * 30 + "\n❌ 服务器连接失败")
+                        logger.error(f"获取{get_server_name(server_num)}信息失败: {e}")
+                messages.append(f"🎮 {get_server_name(server_num)} 状态信息\n" + "=" * 30 + "\n❌ 服务器连接失败")
                 
                 final_message = "\n\n".join(messages)
                 await server_info.finish(final_message)
@@ -289,7 +304,7 @@ async def search_vip_in_server(player_name: str, server_num: int) -> Optional[Vi
                     return vip
             return None
     except Exception as e:
-        logger.error(f"在服务器 {server_num} 中搜索VIP失败: {e}")
+        logger.error(f"在{get_server_name(server_num)}中搜索VIP失败: {e}")
         return None
 
 
