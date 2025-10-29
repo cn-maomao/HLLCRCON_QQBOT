@@ -212,6 +212,8 @@ COMMON_MAPS = [
     # 常用的offensive模式地图
     "stmereeglise_offensive_ger",
     "stmereeglise_offensive_us",
+    "stmariedumont_off_ger",
+    "stmariedumont_off_us",
     "utahbeach_offensive_ger",
     "utahbeach_offensive_us",
     "driel_offensive_ger", 
