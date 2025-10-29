@@ -642,7 +642,7 @@ async def handle_online_players(bot: Bot, event: Event, args: Message = CommandA
             try:
                 server_num = int(args_text)
                 if not validate_server_num(server_num):
-                    await online_players.finish("❌ 服务器编号只能是1、2或3")
+                    await online_players.finish(config.get_message("invalid_server_num"))
             except ValueError:
                 await online_players.finish("❌ 服务器编号格式错误，请输入1、2或3")
         
