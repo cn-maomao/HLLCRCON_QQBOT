@@ -21,12 +21,13 @@ except ImportError:
     DEFAULT_ADMIN_PERMISSION = SUPERUSER
     logger.warning("新权限系统未找到，使用传统SUPERUSER权限")
 
-from ..config import config, get_server_name
+from ..config import config, get_server_name, validate_server_num
 
 # API配置
 CRCON_API_BASE_URL_1 = config.crcon_api_base_url_1
 CRCON_API_BASE_URL_2 = config.crcon_api_base_url_2
 CRCON_API_BASE_URL_3 = config.crcon_api_base_url_3
+CRCON_API_BASE_URL_4 = config.crcon_api_base_url_4
 CRCON_API_TOKEN = config.crcon_api_token
 
 
@@ -300,8 +301,8 @@ async def handle_player_list(bot: Bot, event: Event, args: Message = CommandArg(
         arg_text = args.extract_plain_text().strip()
         if arg_text and arg_text.isdigit():
             server_num = int(arg_text)
-            if server_num not in [1, 2, 3]:
-                await player_list.finish("❌ 服务器编号只能是1、2或3")
+            if not validate_server_num(server_num):
+                await player_list.finish("❌ 服务器编号只能是1、2、3或4")
         
         async with await get_api_client(server_num) as client:
             players = await client.get_players()
@@ -932,10 +933,10 @@ async def handle_vip_add(bot: Bot, event: Event, args: Message = CommandArg()):
                 
                 # 检查第三个参数是否为服务器编号
                 if len(parts) > 2:
-                    if parts[2] in ["1", "2", "3", "1,2", "2,1", "1,3", "3,1", "2,3", "3,2", "1,2,3", "全部"]:
+                    if parts[2] in ["1", "2", "3", "4", "1,2", "2,1", "1,3", "3,1", "2,3", "3,2", "1,4", "4,1", "2,4", "4,2", "3,4", "4,3", "1,2,3", "1,2,4", "1,3,4", "2,3,4", "1,2,3,4", "全部"]:
                         if parts[2] == "全部" or "," in parts[2]:
                             if parts[2] == "全部":
-                                server_nums = [1, 2, 3]
+                                server_nums = [1, 2, 3, 4]
                             else:
                                 server_nums = [int(x) for x in parts[2].split(",")]
                         else:
@@ -949,10 +950,10 @@ async def handle_vip_add(bot: Bot, event: Event, args: Message = CommandArg()):
                         description = parts[2]
             else:
                 # 第二个参数不是时长，检查是否为服务器编号
-                if parts[1] in ["1", "2", "3", "1,2", "2,1", "1,3", "3,1", "2,3", "3,2", "1,2,3", "全部"]:
+                if parts[1] in ["1", "2", "3", "4", "1,2", "2,1", "1,3", "3,1", "2,3", "3,2", "1,4", "4,1", "2,4", "4,2", "3,4", "4,3", "1,2,3", "1,2,4", "1,3,4", "2,3,4", "1,2,3,4", "全部"]:
                     if parts[1] == "全部" or "," in parts[1]:
                         if parts[1] == "全部":
-                            server_nums = [1, 2, 3]
+                            server_nums = [1, 2, 3, 4]
                         else:
                             server_nums = [int(x) for x in parts[1].split(",")]
                     else:
@@ -1032,15 +1033,15 @@ async def handle_vip_remove(bot: Bot, event: Event, args: Message = CommandArg()
         # 解析服务器编号
         server_nums = [1]  # 默认服务器1
         if len(parts) > 1:
-            if parts[1] in ["1", "2", "3"]:
+            if parts[1] in ["1", "2", "3", "4"]:
                 server_nums = [int(parts[1])]
-            elif parts[1] in ["1,2", "2,1", "1,3", "3,1", "2,3", "3,2", "1,2,3", "全部"]:
+            elif parts[1] in ["1,2", "2,1", "1,3", "3,1", "2,3", "3,2", "1,4", "4,1", "2,4", "4,2", "3,4", "4,3", "1,2,3", "1,2,4", "1,3,4", "2,3,4", "1,2,3,4", "全部"]:
                 if parts[1] == "全部":
-                    server_nums = [1, 2, 3]
+                    server_nums = [1, 2, 3, 4]
                 else:
                     server_nums = [int(x) for x in parts[1].split(",")]
             else:
-                await vip_remove.finish("❌ 服务器编号只能是1、2、3或全部")
+                await vip_remove.finish("❌ 服务器编号只能是1、2、3、4或全部")
         
         # 执行删除VIP操作
         success_servers = []

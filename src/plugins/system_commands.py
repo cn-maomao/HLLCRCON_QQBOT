@@ -27,6 +27,7 @@ driver = get_driver()
 CRCON_API_BASE_URL_1 = config.crcon_api_base_url_1
 CRCON_API_BASE_URL_2 = config.crcon_api_base_url_2
 CRCON_API_BASE_URL_3 = config.crcon_api_base_url_3
+CRCON_API_BASE_URL_4 = config.crcon_api_base_url_4
 CRCON_API_TOKEN = config.crcon_api_token
 
 # 系统指令
@@ -221,7 +222,7 @@ async def startup_check():
     """启动时检查API连接"""
     logger.info("正在检查API连接...")
     
-    for i, base_url in enumerate([CRCON_API_BASE_URL_1, CRCON_API_BASE_URL_2, CRCON_API_BASE_URL_3], 1):
+    for i, base_url in enumerate([CRCON_API_BASE_URL_1, CRCON_API_BASE_URL_2, CRCON_API_BASE_URL_3, CRCON_API_BASE_URL_4], 1):
         try:
             async with CRCONAPIClient(base_url, CRCON_API_TOKEN) as client:
                 await client.get_gamestate()

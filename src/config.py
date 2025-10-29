@@ -28,12 +28,14 @@ class Config(BaseSettings):
     crcon_api_base_url_1: str = Field(default="http://127.0.0.1:8010/api", description="服务器1 API地址")
     crcon_api_base_url_2: str = Field(default="http://127.0.0.1:8011/api", description="服务器2 API地址")
     crcon_api_base_url_3: str = Field(default="http://127.0.0.1:8012/api", description="服务器3 API地址")
+    crcon_api_base_url_4: str = Field(default="http://127.0.0.1:8013/api", description="服务器4 API地址")
     crcon_api_token: str = Field(default="", description="CRCON API令牌")
     
     # 服务器名称配置
     server_name_1: str = Field(default="服务器1", description="服务器1名称")
     server_name_2: str = Field(default="服务器2", description="服务器2名称")
     server_name_3: str = Field(default="服务器3", description="服务器3名称")
+    server_name_4: str = Field(default="服务器4", description="服务器4名称")
     
     # 日志配置
     log_level: str = Field(default="INFO", description="日志级别")
@@ -80,6 +82,8 @@ def get_api_base_url(server_num: int = 1) -> str:
         return config.crcon_api_base_url_2
     elif server_num == 3:
         return config.crcon_api_base_url_3
+    elif server_num == 4:
+        return config.crcon_api_base_url_4
     else:
         raise ValueError(f"Invalid server number: {server_num}")
 
@@ -92,13 +96,15 @@ def get_server_name(server_num: int = 1) -> str:
         return config.server_name_2
     elif server_num == 3:
         return config.server_name_3
+    elif server_num == 4:
+        return config.server_name_4
     else:
         raise ValueError(f"Invalid server number: {server_num}")
 
 
 def validate_server_num(server_num: int) -> bool:
     """验证服务器编号是否有效"""
-    return server_num in [1, 2, 3]
+    return server_num in [1, 2, 3, 4]
 
 
 def is_admin_user(user_id: str) -> bool:
@@ -162,7 +168,7 @@ class Constants:
     # 错误消息
     ERROR_MESSAGES = {
         "api_connection_failed": "❌ API连接失败，请稍后重试",
-        "invalid_server_num": "❌ 服务器编号只能是1、2或3",
+        "invalid_server_num": "❌ 服务器编号只能是1、2、3或4",
         "no_players_online": "❌ 当前没有在线玩家",
         "invalid_index_format": "❌ 序号格式错误，请使用如：1 或 1-5 或 1,3,5-7",
         "index_out_of_range": "❌ 序号超出范围",
