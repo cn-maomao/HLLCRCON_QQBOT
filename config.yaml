@@ -1,0 +1,295 @@
+# CRCON QQ Bot 统一配置文件
+# 整合了服务器配置、权限组配置等所有非敏感配置
+# 敏感信息（API令牌、QQ号等）仍保存在 .env 文件中
+
+# ==================== 全局设置 ====================
+global_settings:
+  # 应用信息
+  app_name: "CRCON QQ Bot"
+  app_version: "2.0.0"
+  app_description: "CRCON Hell Let Loose 服务器管理机器人"
+  
+  # 默认服务器（当用户未指定服务器编号时使用）
+  default_server: "server_1"
+  default_server_group: "group_a"
+  
+  # API请求配置
+  api_timeout: 30
+  api_retry_times: 3
+  api_retry_delay: 1.0
+  
+  # 缓存配置
+  enable_cache: true
+  cache_expire_time: 300
+  
+  # 健康检查配置
+  enable_auto_health_check: true
+  health_check_interval: 5
+  
+  # 权限配置
+  enable_cross_group_permissions: true
+  permission_cache_time: 300
+  log_permission_operations: true
+  permission_log_file: "logs/permissions.log"
+
+# ==================== 服务器配置 ====================
+servers:
+  # 服务器1配置
+  server_1:
+    # 服务器基本信息
+    name: "AAA服务器"
+    display_name: "AAA"
+    description: "主要游戏服务器"
+    
+    # 连接信息（使用环境变量）
+    api_base_url: "${CRCON_API_BASE_URL_1}"
+    api_token: "${CRCON_API_TOKEN}"
+    
+    # 服务器特定设置
+    max_players: 100
+    region: "Asia"
+    timezone: "Asia/Shanghai"
+    
+    # 功能开关
+    enabled: true
+    maintenance_mode: false
+    
+    # 自定义参数
+    custom_params:
+      server_type: "warfare"
+      language: "zh-CN"
+
+  # 服务器2配置
+  server_2:
+    name: "BBB服务器"
+    display_name: "BBB"
+    description: "备用游戏服务器"
+    
+    api_base_url: "${CRCON_API_BASE_URL_2}"
+    api_token: "${CRCON_API_TOKEN}"
+    
+    max_players: 100
+    region: "Asia"
+    timezone: "Asia/Shanghai"
+    
+    enabled: true
+    maintenance_mode: false
+    
+    custom_params:
+      server_type: "warfare"
+      language: "zh-CN"
+
+  # 服务器3配置
+  server_3:
+    name: "CCC服务器"
+    display_name: "CCC"
+    description: "测试服务器"
+    
+    api_base_url: "${CRCON_API_BASE_URL_3}"
+    api_token: "${CRCON_API_TOKEN}"
+    
+    max_players: 50
+    region: "Asia"
+    timezone: "Asia/Shanghai"
+    
+    enabled: true
+    maintenance_mode: false
+    
+    custom_params:
+      server_type: "skirmish"
+      language: "zh-CN"
+
+  # 服务器4配置
+  server_4:
+    name: "DDD服务器"
+    display_name: "DDD"
+    description: "活动服务器"
+    
+    api_base_url: "${CRCON_API_BASE_URL_4}"
+    api_token: "${CRCON_API_TOKEN}"
+    
+    max_players: 100
+    region: "Asia"
+    timezone: "Asia/Shanghai"
+    
+    enabled: true
+    maintenance_mode: false
+    
+    custom_params:
+      server_type: "warfare"
+      language: "zh-CN"
+
+# ==================== 权限组配置 ====================
+permission_groups:
+  # 服务器组A - 主要服务器组
+  group_a:
+    # 服务器组基本信息
+    name: "主要服务器组"
+    description: "包含核心游戏服务器的主要服务器组"
+    
+    # 绑定的游戏服务器实例列表
+    game_servers:
+      - server_id: "server_1"
+        name: "AAA服务器"
+        enabled: true
+      - server_id: "server_2"
+        name: "BBB服务器"
+        enabled: true
+    
+    # 权限配置（QQ号从环境变量或运行时数据获取）
+    permissions:
+      # 主人权限 - 拥有所有权限
+      owners: []  # 将从 .env 的 SUPERUSERS 或 permissions.json 中读取
+      # 超级管理员 - 拥有大部分管理权限
+      super_admins: []
+      # 普通管理员 - 基础管理权限
+      admins: []
+    
+    # 允许使用的QQ群组（从环境变量读取）
+    allowed_groups: []  # 将从 .env 的 ADMIN_GROUPS 和 PLAYER_GROUPS 中读取
+    
+    # 功能权限配置
+    features:
+      allow_kick: true
+      allow_ban: true
+      allow_map_change: true
+      allow_player_list: true
+      allow_server_management: true
+
+  # 服务器组B - 测试服务器组
+  group_b:
+    name: "测试服务器组"
+    description: "用于新功能测试的服务器组"
+    
+    game_servers:
+      - server_id: "server_3"
+        name: "CCC测试服务器"
+        enabled: true
+      - server_id: "server_4"
+        name: "DDD开发服务器"
+        enabled: true
+    
+    permissions:
+      owners: []
+      super_admins: []
+      admins: []
+    
+    allowed_groups: []
+    
+    features:
+      allow_kick: true
+      allow_ban: false  # 测试服务器不允许封禁
+      allow_map_change: true
+      allow_player_list: true
+      allow_server_management: false
+
+# ==================== 服务器组配置 ====================
+server_groups:
+  # 主要服务器组
+  main_servers:
+    name: "主要服务器"
+    servers: ["server_1", "server_2"]
+    description: "主要的游戏服务器"
+  
+  # 测试服务器组
+  test_servers:
+    name: "测试服务器"
+    servers: ["server_3", "server_4"]
+    description: "用于测试的服务器"
+
+# ==================== 服务器别名配置 ====================
+server_aliases:
+  # 数字别名
+  "1": "server_1"
+  "2": "server_2"
+  "3": "server_3"
+  "4": "server_4"
+  
+  # 字母别名
+  "AAA": "server_1"
+  "BBB": "server_2"
+  "CCC": "server_3"
+  "DDD": "server_4"
+  
+  # 中文别名
+  "主服": "server_1"
+  "备服": "server_2"
+  "测试服": "server_3"
+  "活动服": "server_4"
+
+# ==================== 功能配置 ====================
+features:
+  # 命令功能开关
+  commands:
+    player_commands: true
+    admin_commands: true
+    server_management: true
+    permission_management: true
+    system_commands: true
+  
+  # 自动功能开关
+  auto_features:
+    health_check: true
+    player_monitoring: true
+    log_rotation: true
+  
+  # 通知功能
+  notifications:
+    server_status_change: true
+    player_join_leave: false
+    admin_actions: true
+
+# ==================== 日志配置 ====================
+logging:
+  # 日志级别
+  level: "INFO"
+  
+  # 日志文件配置
+  files:
+    main_log: "logs/bot.log"
+    permission_log: "logs/permissions.log"
+    api_log: "logs/api.log"
+    error_log: "logs/error.log"
+  
+  # 日志轮转配置
+  rotation:
+    max_size: "10MB"
+    backup_count: 7
+    when: "midnight"
+
+# ==================== 消息模板配置 ====================
+message_templates:
+  # 成功消息模板
+  success:
+    kick_player: "✅ 成功踢出玩家 {player_name}"
+    ban_player: "✅ 成功封禁玩家 {player_name}"
+    unban_player: "✅ 成功解封玩家 {player_name}"
+    change_map: "✅ 成功切换地图到 {map_name}"
+  
+  # 错误消息模板
+  error:
+    permission_denied: "❌ 权限不足，无法执行此操作"
+    server_not_found: "❌ 服务器 {server_id} 不存在"
+    player_not_found: "❌ 未找到玩家 {player_name}"
+    api_error: "❌ API请求失败：{error_message}"
+  
+  # 信息消息模板
+  info:
+    server_status: "🖥️ 服务器状态：{status}"
+    player_count: "👥 在线玩家：{current}/{max}"
+    map_info: "🗺️ 当前地图：{map_name}"
+
+# ==================== 配置文件说明 ====================
+# 本配置文件整合了以下原配置文件的功能：
+# 1. servers_config.yaml - 服务器配置
+# 2. config/permission_groups.yaml - 权限组配置
+# 3. 部分 .env 配置的结构化表示
+# 
+# 敏感信息仍保存在 .env 文件中：
+# - API令牌 (CRCON_API_TOKEN)
+# - 服务器地址 (CRCON_API_BASE_URL_*)
+# - QQ号码 (SUPERUSERS, ADMIN_GROUPS, PLAYER_GROUPS)
+# - OneBot连接信息
+#
+# 运行时权限数据仍保存在 data/permissions.json 中，
+# 但建议迁移到新的权限组系统中

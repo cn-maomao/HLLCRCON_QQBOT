@@ -37,8 +37,8 @@ class Config(BaseSettings):
     server_name_3: str = Field(default="服务器3", description="服务器3名称")
     server_name_4: str = Field(default="服务器4", description="服务器4名称")
     
-    # 多服务器配置文件路径
-    servers_config_file: str = Field(default="servers_config.yaml", description="多服务器配置文件路径")
+    # 统一配置文件路径
+    config_file: str = Field(default="config.yaml", description="统一配置文件路径")
     
     # 日志配置
     log_level: str = Field(default="INFO", description="日志级别")

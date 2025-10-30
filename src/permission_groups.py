@@ -84,12 +84,15 @@ class PermissionGroupManager:
     """权限组管理器"""
     
     def __init__(self):
-        self.config_file = Path("config/permission_groups.yaml")
+        # 使用新的统一配置文件
+        from .utils.config_loader import get_config
+        self.config_loader = get_config()
+        
+        # 保留缓存和日志文件路径
         self.cache_file = Path("data/permission_groups_cache.json")
         self.log_file = Path("logs/permissions.log")
         
         # 确保目录存在
-        self.config_file.parent.mkdir(exist_ok=True)
         self.cache_file.parent.mkdir(exist_ok=True)
         self.log_file.parent.mkdir(exist_ok=True)
         
@@ -100,22 +103,25 @@ class PermissionGroupManager:
     def _load_config(self):
         """加载权限组配置"""
         try:
-            if self.config_file.exists():
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    data = yaml.safe_load(f)
-                
-                # 加载服务器组
-                self.server_groups = {}
-                for group_id, group_data in data.get('server_groups', {}).items():
-                    self.server_groups[group_id] = ServerGroup(group_id, group_data)
-                
-                # 加载全局设置
-                self.global_settings = data.get('global_settings', {})
-                
-                logger.info(f"已加载 {len(self.server_groups)} 个服务器组配置")
-            else:
-                logger.warning("权限组配置文件不存在，使用默认配置")
-                self._create_default_config()
+            # 从统一配置文件加载权限组配置
+            permission_groups_data = self.config_loader.get_permission_groups()
+            global_settings_data = self.config_loader.get_global_settings()
+            
+            # 加载服务器组
+            self.server_groups = {}
+            for group_id, group_data in permission_groups_data.items():
+                self.server_groups[group_id] = ServerGroup(group_id, group_data)
+            
+            # 加载全局设置
+            self.global_settings = {
+                'default_group': global_settings_data.get('default_server_group', 'group_a'),
+                'enable_cross_group_permissions': global_settings_data.get('enable_cross_group_permissions', True),
+                'permission_cache_time': global_settings_data.get('permission_cache_time', 300),
+                'log_permission_operations': global_settings_data.get('log_permission_operations', True)
+            }
+            
+            logger.info(f"已加载 {len(self.server_groups)} 个服务器组配置")
+            
         except Exception as e:
             logger.error(f"加载权限组配置失败: {e}")
             self._create_default_config()
@@ -124,7 +130,7 @@ class PermissionGroupManager:
         """创建默认配置"""
         self.server_groups = {}
         self.global_settings = {
-            'default_group': 'default',
+            'default_group': 'group_a',
             'enable_cross_group_permissions': True,
             'permission_cache_time': 300,
             'log_permission_operations': True
@@ -132,6 +138,7 @@ class PermissionGroupManager:
     
     def reload_config(self):
         """重新加载配置"""
+        self.config_loader.reload()
         self._load_config()
         self._log_operation("CONFIG_RELOAD", "system", "配置文件已重新加载")
     

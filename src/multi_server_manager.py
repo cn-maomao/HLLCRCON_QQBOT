@@ -53,20 +53,20 @@ class ConfigFileHandler(FileSystemEventHandler):
         if event.is_directory:
             return
             
-        if event.src_path.endswith('servers_config.yaml'):
+        if event.src_path.endswith('config.yaml'):
             # 防止重复触发
             current_time = time.time()
             if current_time - self.last_modified < 1:
                 return
             self.last_modified = current_time
             
-            logger.info("检测到服务器配置文件变更，重新加载配置...")
+            logger.info("检测到配置文件变更，重新加载配置...")
             self.manager.reload_config()
 
 class MultiServerManager:
     """多服务器管理器"""
     
-    def __init__(self, config_file: str = "servers_config.yaml"):
+    def __init__(self, config_file: str = "config.yaml"):
         self.config_file = Path(config_file)
         self.servers: Dict[str, ServerConfig] = {}
         self.server_groups: Dict[str, Dict[str, Any]] = {}
