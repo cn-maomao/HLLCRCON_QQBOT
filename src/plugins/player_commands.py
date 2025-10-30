@@ -719,7 +719,7 @@ async def handle_help(bot: Bot, event: Event):
         })
         
         # 添加在线玩家查询说明
-        players_msg = "👥 在线玩家查询：\n/在线玩家 [服务器编号]\n/玩家列表 [服务器编号]\n/players [1|2]\n/online [1|2]\n/详细玩家列表 - 查看详细玩家信息（包含UID、阵营、兵种等）\n/详细在线玩家 - 同上\n/玩家详情 - 同上"
+        players_msg = "👥 在线玩家查询：\n/在线玩家 [服务器编号]\n/玩家列表 [服务器编号]\n/players [1|2]\n/online [1|2]\n/详细玩家列表 [服务器编号] - 查看详细玩家信息（包含UID、阵营、兵种等）\n/详细在线玩家 [服务器编号] - 同上\n/玩家详情 [服务器编号] - 同上\n/团队视图 [服务器编号] - 查看团队视图（按小队分组显示）"
         forward_messages.append({
             "type": "node",
             "data": {
@@ -752,7 +752,7 @@ async def handle_help(bot: Bot, event: Event):
         })
         
         # 添加使用说明
-        usage_msg = "📝 使用说明：\n• 服务器编号：1、2、3或4，默认为1\n• 玩家名称支持模糊匹配\n• 详细玩家列表每6分钟自动更新数据\n• 支持动态配置文件管理\n• 所有指令都支持别名"
+        usage_msg = "📝 使用说明：\n• 服务器编号：1、2、3或4，默认为1\n• 玩家名称支持模糊匹配\n• 详细玩家列表每6分钟自动更新数据\n• 团队视图显示按小队分组的玩家信息\n• 支持动态配置文件管理\n• 所有指令都支持别名"
         forward_messages.append({
             "type": "node",
             "data": {
@@ -763,7 +763,7 @@ async def handle_help(bot: Bot, event: Event):
         })
         
         # 添加示例
-        example_msg = "💡 使用示例：\n/服务器信息 1\n/查询vip PlayerName 2\n/在线玩家 1\n/详细玩家列表 - 查看详细玩家信息（含UID、阵营等）\n/服务器列表 - 查看所有可用服务器\n/权限组列表 - 查看权限组\n/我的权限 - 查看自己权限"
+        example_msg = "💡 使用示例：\n/服务器信息 1\n/查询vip PlayerName 2\n/在线玩家 1\n/详细玩家列表 2 - 查看详细玩家信息（含UID、阵营等）\n/团队视图 1 - 查看团队视图（按小队分组）\n/服务器列表 - 查看所有可用服务器\n/权限组列表 - 查看权限组\n/我的权限 - 查看自己权限"
         forward_messages.append({
             "type": "node",
             "data": {

@@ -96,11 +96,30 @@ async def send_forward_message(bot: Bot, event: Event, nodes: List[dict], fallba
             contents = []
             for node in nodes:
                 if node.get("type") == "node" and "data" in node:
-                    contents.append(node["data"]["content"])
-            fallback_message = "\n\n".join(contents)
+                    data = node["data"]
+                    if "content" in data:
+                        contents.append(data["content"])
+                    elif "message" in data:
+                        # 处理message字段的情况
+                        if isinstance(data["message"], str):
+                            contents.append(data["message"])
+                        elif isinstance(data["message"], list):
+                            # 处理消息段列表
+                            text_parts = []
+                            for msg_seg in data["message"]:
+                                if isinstance(msg_seg, dict) and msg_seg.get("type") == "text":
+                                    text_parts.append(msg_seg.get("data", {}).get("text", ""))
+                            if text_parts:
+                                contents.append("".join(text_parts))
+            fallback_message = "\n\n".join(contents) if contents else "帮助信息加载失败，请稍后重试"
         
         # 发送普通消息
-        await bot.send(event, fallback_message)
+        try:
+            await bot.send(event, fallback_message)
+        except Exception as send_error:
+            logger.error(f"发送回退消息也失败: {send_error}")
+            # 最后的回退方案
+            await bot.send(event, "帮助信息暂时无法显示，请稍后重试")
 
 
 def parse_player_indices(indices_str: str) -> List[int]:
@@ -772,30 +791,10 @@ async def handle_set_idle_time(bot: Bot, event: Event, args: Message = CommandAr
 async def handle_admin_help(bot: Bot, event: Event):
     """处理管理帮助指令"""
     try:
-        # 构建转发消息内容段落
-        content_sections = [
-            ("CRCON机器人", "🛡️ CRCON管理机器人 - 管理功能"),
-            ("玩家管理", "👥 玩家管理：\n  /管理员玩家列表 [服务器编号] - 查看在线玩家（管理版）\n  /击杀 序号 [服务器编号] [原因] - 管理员击杀\n  /踢出 序号 [服务器编号] [原因] - 踢出玩家\n  /封禁 序号 时长 [服务器编号] [原因] - 封禁玩家\n  /立即调边 序号 [服务器编号] - 立即调边\n  /死后调边 序号 [服务器编号] - 死后调边"),
-            ("地图管理", "🗺️ 地图管理：\n  /换图 [地图名称/编号] [服务器编号] - 更换地图\n  /地图列表 [服务器编号] - 查看可用地图列表\n  /地图点位 [服务器编号] - 查看当前地图点位控制情况\n  /设置点位 点位配置 [服务器编号] - 设置地图点位位置"),
-            ("服务器设置", "⚙️ 服务器设置：\n  /设置闲置时间 分钟数 [服务器编号] - 设置闲置踢出时间\n  /服务器设置 [服务器编号] - 查看服务器设置状态\n  /设置自动平衡 启用/禁用 [阈值] [服务器编号] - 设置自动人数平衡\n  /设置调边冷却 分钟数 [服务器编号] - 设置调边冷却时间"),
-            ("VIP管理", "👑 VIP管理：\n  /VIP查询 玩家ID [服务器编号] - 查询VIP信息\n  /添加VIP 玩家ID [时长] [服务器编号] [描述] - 添加VIP\n  /删除VIP 玩家ID [服务器编号] - 删除VIP"),
-            ("消息管理", "💬 消息管理：\n  /私信玩家 序号 消息内容 [服务器编号] - 向指定玩家发送私信\n  /全体私信 消息内容 [服务器编号] - 向所有玩家发送私信"),
-            ("权限管理", "🔐 权限管理（超级管理员）：\n  /添加管理员 QQ号 - 添加普通管理员\n  /删除管理员 QQ号 - 删除普通管理员\n  /管理员列表 - 查看管理员列表\n  /权限信息 [QQ号] - 查看权限信息"),
-            ("使用说明", "📝 说明：\n  • 序号支持范围：1-5 或 1,3,5-7\n  • 封禁时长：数字(小时) 或 '永久'\n  • VIP时长：数字(小时) 或 '永久'，默认永久\n  • 点位配置：下中上中下 (上=第一个点位, 中=中间点位, 下=最后一个点位) 或 12321 (1=第一个点位, 2=中间点位, 3=最后一个点位)\n  • 服务器编号：1、2或3，默认为1；VIP支持'全部'同时操作三个服务器\n  • 所有管理功能需要管理员权限"),
-            ("使用示例", "💡 示例：\n  /管理员玩家列表 3\n  /击杀 1-5 2 违规行为\n  /封禁 3 24 1 恶意破坏\n  /换图 foy_warfare 3\n  /地图列表 2\n  /设置闲置时间 15 3\n  /地图点位 1\n  /设置点位 下中上中下 2\n  /服务器设置 3\n  /设置自动平衡 启用 2 1\n  /VIP查询 76561198123456789 3\n  /添加VIP 76561198123456789 72 全部 赞助用户\n  /私信玩家 1-3 欢迎来到服务器 2\n  /全体私信 服务器即将重启 3\n  /添加管理员 123456789")
-        ]
-        
-        # 创建转发消息
-        nodes = create_forward_message(bot, "🛡️ CRCON管理机器人 - 管理功能", content_sections)
-        
-        # 发送转发消息
-        await send_forward_message(bot, event, nodes)
-        
-    except Exception as e:
-        logger.error(f"发送管理帮助失败: {e}")
-        # 回退到原始消息格式
+        # 直接构建普通消息，避免转发消息的兼容性问题
         message = "🛡️ CRCON管理机器人 - 管理功能\n"
-        message += "=" * 40 + "\n"
+        message += "=" * 40 + "\n\n"
+        
         message += "👥 玩家管理：\n"
         message += "  /管理员玩家列表 [服务器编号] - 查看在线玩家（管理版）\n"
         message += "  /击杀 序号 [服务器编号] [原因] - 管理员击杀\n"
@@ -803,28 +802,34 @@ async def handle_admin_help(bot: Bot, event: Event):
         message += "  /封禁 序号 时长 [服务器编号] [原因] - 封禁玩家\n"
         message += "  /立即调边 序号 [服务器编号] - 立即调边\n"
         message += "  /死后调边 序号 [服务器编号] - 死后调边\n\n"
+        
         message += "🗺️ 地图管理：\n"
         message += "  /换图 [地图名称/编号] [服务器编号] - 更换地图\n"
         message += "  /地图列表 [服务器编号] - 查看可用地图列表\n"
         message += "  /地图点位 [服务器编号] - 查看当前地图点位控制情况\n"
         message += "  /设置点位 点位配置 [服务器编号] - 设置地图点位位置\n\n"
+        
         message += "⚙️ 服务器设置：\n"
         message += "  /设置闲置时间 分钟数 [服务器编号] - 设置闲置踢出时间\n"
         message += "  /服务器设置 [服务器编号] - 查看服务器设置状态\n"
         message += "  /设置自动平衡 启用/禁用 [阈值] [服务器编号] - 设置自动人数平衡\n"
         message += "  /设置调边冷却 分钟数 [服务器编号] - 设置调边冷却时间\n\n"
+        
         message += "👑 VIP管理：\n"
         message += "  /VIP查询 玩家ID [服务器编号] - 查询VIP信息\n"
         message += "  /添加VIP 玩家ID [时长] [服务器编号] [描述] - 添加VIP\n"
         message += "  /删除VIP 玩家ID [服务器编号] - 删除VIP\n\n"
+        
         message += "💬 消息管理：\n"
         message += "  /私信玩家 序号 消息内容 [服务器编号] - 向指定玩家发送私信\n"
         message += "  /全体私信 消息内容 [服务器编号] - 向所有在线玩家发送私信\n\n"
-        message += "🔐 权限管理：\n"
-        message += "  /添加管理员 QQ号 [权限等级] - 添加管理员\n"
-        message += "  /删除管理员 QQ号 - 删除管理员\n"
-        message += "  /管理员列表 - 查看所有管理员\n"
+        
+        message += "🔐 权限管理（超级管理员）：\n"
+        message += "  /添加管理员 QQ号 - 添加普通管理员\n"
+        message += "  /删除管理员 QQ号 - 删除普通管理员\n"
+        message += "  /管理员列表 - 查看管理员列表\n"
         message += "  /权限信息 [QQ号] - 查看权限信息\n\n"
+        
         message += "📝 说明：\n"
         message += "  • 序号支持范围：1-5 或 1,3,5-7\n"
         message += "  • 封禁时长：数字(小时) 或 '永久'\n"
@@ -832,6 +837,7 @@ async def handle_admin_help(bot: Bot, event: Event):
         message += "  • 点位配置：下中上中下 (上=第一个点位, 中=中间点位, 下=最后一个点位) 或 12321 (1=第一个点位, 2=中间点位, 3=最后一个点位)\n"
         message += "  • 服务器编号：1、2或3，默认为1；VIP支持'全部'同时操作三个服务器\n"
         message += "  • 所有管理功能需要管理员权限\n\n"
+        
         message += "💡 示例：\n"
         message += "  /管理员玩家列表 2\n"
         message += "  /击杀 1-5 3 违规行为\n"
@@ -846,9 +852,15 @@ async def handle_admin_help(bot: Bot, event: Event):
         message += "  /设置自动平衡 启用 2 1\n"
         message += "  /VIP查询 76561198123456789 1\n"
         message += "  /添加VIP 76561198123456789 72 全部 赞助用户\n"
-        message += "  /删除VIP 76561198123456789 全部"
+        message += "  /删除VIP 76561198123456789 全部\n"
+        message += "  /添加管理员 123456789"
         
+        # 直接发送普通消息
         await admin_help.finish(message)
+        
+    except Exception as e:
+        logger.error(f"发送管理帮助失败: {e}")
+        await admin_help.finish("❌ 管理帮助信息加载失败，请稍后重试")
 
 
 @vip_query.handle()
