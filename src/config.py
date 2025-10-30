@@ -85,11 +85,11 @@ except ImportError:
     multi_server_manager = None
 
 
-def get_api_base_url(server_num: Union[str, int] = 1) -> str:
+def get_api_base_url(server_num: Union[str, int] = 1, qq_group_id: Optional[str] = None) -> str:
     """获取指定服务器的API基础URL"""
     # 优先使用多服务器管理器
     if _use_multi_server and multi_server_manager:
-        url = multi_server_manager.get_api_base_url(server_num)
+        url = multi_server_manager.get_api_base_url(server_num, qq_group_id)
         if url:
             return url
     
@@ -107,11 +107,11 @@ def get_api_base_url(server_num: Union[str, int] = 1) -> str:
         raise ValueError(f"Invalid server number: {server_num}")
 
 
-def get_server_name(server_num: Union[str, int] = 1) -> str:
+def get_server_name(server_num: Union[str, int] = 1, qq_group_id: Optional[str] = None) -> str:
     """获取指定服务器的名称"""
     # 优先使用多服务器管理器
     if _use_multi_server and multi_server_manager:
-        name = multi_server_manager.get_server_name(server_num)
+        name = multi_server_manager.get_server_name(server_num, qq_group_id)
         if name and not name.startswith("未知服务器"):
             return name
     
@@ -129,11 +129,11 @@ def get_server_name(server_num: Union[str, int] = 1) -> str:
         raise ValueError(f"Invalid server number: {server_num}")
 
 
-def validate_server_num(server_num: Union[str, int]) -> bool:
+def validate_server_num(server_num: Union[str, int], qq_group_id: Optional[str] = None) -> bool:
     """验证服务器编号是否有效"""
     # 优先使用多服务器管理器
     if _use_multi_server and multi_server_manager:
-        return multi_server_manager.validate_server(server_num)
+        return multi_server_manager.validate_server(server_num, qq_group_id)
     
     # 回退到传统验证方式
     try:
@@ -157,17 +157,30 @@ def get_all_servers() -> List[Dict[str, str]]:
     ]
 
 
-def get_server_display_name(server_num: Union[str, int]) -> str:
+def get_server_display_name(server_num: Union[str, int], qq_group_id: Optional[str] = None) -> str:
     """获取服务器显示名称"""
     if _use_multi_server and multi_server_manager:
-        return multi_server_manager.get_server_display_name(server_num)
+        return multi_server_manager.get_server_display_name(server_num, qq_group_id)
     
     # 回退到传统方式
     return str(server_num)
 
 
-def is_admin_user(user_id: str) -> bool:
+def is_admin_user(user_id: str, qq_group_id: Optional[str] = None) -> bool:
     """检查用户是否为管理员"""
+    # 优先使用新权限组系统
+    if qq_group_id:
+        try:
+            from .permission_groups import get_permission_group_manager
+            from .permissions import PermissionLevel
+            manager = get_permission_group_manager()
+            server_group = manager.get_group_for_qq_group(qq_group_id)
+            if server_group:
+                return server_group.has_permission(user_id, PermissionLevel.ADMIN)
+        except ImportError:
+            pass
+    
+    # 回退到旧系统
     return user_id in config.superusers
 
 

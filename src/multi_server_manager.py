@@ -175,8 +175,17 @@ class MultiServerManager:
             self._observer.join()
             logger.info("配置文件监听已停止")
     
-    def resolve_server_id(self, server_identifier: Union[str, int]) -> Optional[str]:
-        """解析服务器标识符为服务器ID"""
+    def resolve_server_id(self, server_identifier: Union[str, int], qq_group_id: Optional[str] = None) -> Optional[str]:
+        """
+        解析服务器标识符到服务器ID
+        
+        Args:
+            server_identifier: 服务器标识符（ID、别名或名称）
+            qq_group_id: QQ群ID，用于获取对应的服务器组别名
+            
+        Returns:
+            解析后的服务器ID，如果找不到则返回None
+        """
         with self._lock:
             # 转换为字符串
             identifier = str(server_identifier)
@@ -185,7 +194,18 @@ class MultiServerManager:
             if identifier in self.servers:
                 return identifier
             
-            # 通过别名匹配
+            # 如果提供了QQ群ID，优先使用权限组系统的别名映射
+            if qq_group_id:
+                try:
+                    from .permission_groups import get_permission_group_manager
+                    permission_manager = get_permission_group_manager()
+                    resolved_id = permission_manager.resolve_server_alias_for_qq_group(qq_group_id, identifier)
+                    if resolved_id and resolved_id in self.servers:
+                        return resolved_id
+                except Exception as e:
+                    logger.warning(f"使用权限组别名解析失败: {e}")
+            
+            # 回退到全局别名映射（向后兼容）
             if identifier in self.server_aliases:
                 return self.server_aliases[identifier]
             
@@ -196,9 +216,18 @@ class MultiServerManager:
             
             return None
     
-    def get_server_config(self, server_identifier: Union[str, int]) -> Optional[ServerConfig]:
-        """获取服务器配置"""
-        server_id = self.resolve_server_id(server_identifier)
+    def get_server_config(self, server_identifier: Union[str, int], qq_group_id: Optional[str] = None) -> Optional[ServerConfig]:
+        """
+        获取服务器配置
+        
+        Args:
+            server_identifier: 服务器标识符
+            qq_group_id: QQ群ID，用于别名解析
+            
+        Returns:
+            服务器配置对象
+        """
+        server_id = self.resolve_server_id(server_identifier, qq_group_id)
         if server_id:
             return self.servers.get(server_id)
         return None
@@ -244,9 +273,9 @@ class MultiServerManager:
         
         return servers
     
-    def is_server_enabled(self, server_identifier: Union[str, int]) -> bool:
+    def is_server_enabled(self, server_identifier: Union[str, int], qq_group_id: Optional[str] = None) -> bool:
         """检查服务器是否启用"""
-        config = self.get_server_config(server_identifier)
+        config = self.get_server_config(server_identifier, qq_group_id)
         return config is not None and config.enabled and not config.maintenance_mode
     
     def get_default_server(self) -> Optional[ServerConfig]:
@@ -255,29 +284,29 @@ class MultiServerManager:
             return self.get_server_config(self.global_settings.default_server)
         return None
     
-    def get_api_base_url(self, server_identifier: Union[str, int]) -> Optional[str]:
+    def get_api_base_url(self, server_identifier: Union[str, int], qq_group_id: Optional[str] = None) -> Optional[str]:
         """获取服务器API基础URL"""
-        config = self.get_server_config(server_identifier)
+        config = self.get_server_config(server_identifier, qq_group_id)
         return config.api_base_url if config else None
     
-    def get_api_token(self, server_identifier: Union[str, int]) -> Optional[str]:
+    def get_api_token(self, server_identifier: Union[str, int], qq_group_id: Optional[str] = None) -> Optional[str]:
         """获取服务器API令牌"""
-        config = self.get_server_config(server_identifier)
+        config = self.get_server_config(server_identifier, qq_group_id)
         return config.api_token if config else None
     
-    def get_server_name(self, server_identifier: Union[str, int]) -> str:
+    def get_server_name(self, server_identifier: Union[str, int], qq_group_id: Optional[str] = None) -> str:
         """获取服务器名称"""
-        config = self.get_server_config(server_identifier)
+        config = self.get_server_config(server_identifier, qq_group_id)
         return config.name if config else f"未知服务器({server_identifier})"
     
-    def get_server_display_name(self, server_identifier: Union[str, int]) -> str:
+    def get_server_display_name(self, server_identifier: Union[str, int], qq_group_id: Optional[str] = None) -> str:
         """获取服务器显示名称"""
-        config = self.get_server_config(server_identifier)
+        config = self.get_server_config(server_identifier, qq_group_id)
         return config.display_name if config else f"未知({server_identifier})"
     
-    def validate_server(self, server_identifier: Union[str, int]) -> bool:
+    def validate_server(self, server_identifier: Union[str, int], qq_group_id: Optional[str] = None) -> bool:
         """验证服务器标识符是否有效"""
-        return self.resolve_server_id(server_identifier) is not None
+        return self.resolve_server_id(server_identifier, qq_group_id) is not None
     
     def add_server(self, server_config: ServerConfig) -> bool:
         """动态添加服务器配置（仅内存中，不保存到文件）"""
@@ -290,11 +319,11 @@ class MultiServerManager:
             logger.error(f"添加服务器配置失败: {e}")
             return False
     
-    def remove_server(self, server_identifier: Union[str, int]) -> bool:
+    def remove_server(self, server_identifier: Union[str, int], qq_group_id: Optional[str] = None) -> bool:
         """动态移除服务器配置（仅内存中，不保存到文件）"""
         try:
             with self._lock:
-                server_id = self.resolve_server_id(server_identifier)
+                server_id = self.resolve_server_id(server_identifier, qq_group_id)
                 if server_id and server_id in self.servers:
                     del self.servers[server_id]
                     logger.info(f"已移除服务器配置: {server_id}")

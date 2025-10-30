@@ -163,7 +163,8 @@ async def handle_add_permission(bot: Bot, event: Event, args: Message = CommandA
     """处理添加权限命令"""
     try:
         # 检查是否为管理员
-        if not is_admin_user(str(event.user_id)):
+        group_id = str(event.group_id) if hasattr(event, 'group_id') else None
+        if not is_admin_user(str(event.user_id), group_id):
             await add_permission_cmd.finish("❌ 权限不足，只有管理员可以执行此操作")
         
         args_text = args.extract_plain_text().strip()
@@ -214,7 +215,8 @@ async def handle_remove_permission(bot: Bot, event: Event, args: Message = Comma
     """处理移除权限命令"""
     try:
         # 检查是否为管理员
-        if not is_admin_user(str(event.user_id)):
+        group_id = str(event.group_id) if hasattr(event, 'group_id') else None
+        if not is_admin_user(str(event.user_id), group_id):
             await remove_permission_cmd.finish("❌ 权限不足，只有管理员可以执行此操作")
         
         args_text = args.extract_plain_text().strip()
@@ -311,7 +313,8 @@ async def handle_reload_permission(bot: Bot, event: Event):
     """处理重载权限配置命令"""
     try:
         # 检查是否为管理员
-        if not is_admin_user(str(event.user_id)):
+        group_id = str(event.group_id) if hasattr(event, 'group_id') else None
+        if not is_admin_user(str(event.user_id), group_id):
             await reload_permission_cmd.finish("❌ 权限不足，只有管理员可以执行此操作")
         
         manager = get_permission_group_manager()

@@ -1,0 +1,71 @@
+# 权限组测试配置文件
+# 这个文件用于测试新的独立权限和别名系统
+
+server_groups:
+  # 测试组1 - 用于QQ群123456789
+  test_group_1:
+    name: "测试服务器组1"
+    description: "用于测试的第一个服务器组"
+    qq_groups:
+      - "123456789"
+    game_servers:
+      - server_id: "server1"
+        name: "测试服务器1"
+      - server_id: "server2"
+        name: "测试服务器2"
+    server_aliases:
+      "主服": "server1"
+      "副服": "server2"
+      "1": "server1"
+      "2": "server2"
+    permissions:
+      owners:
+        - "1001"
+      super_admins: []
+      admins:
+        - "1002"
+      users:
+        - "1003"
+    features:
+      player_commands: true
+      admin_commands: true
+      server_management: true
+
+  # 测试组2 - 用于QQ群987654321
+  test_group_2:
+    name: "测试服务器组2"
+    description: "用于测试的第二个服务器组"
+    qq_groups:
+      - "987654321"
+    game_servers:
+      - server_id: "server3"
+        name: "测试服务器3"
+      - server_id: "server4"
+        name: "测试服务器4"
+    server_aliases:
+      "主服": "server3"
+      "备用": "server4"
+      "A": "server3"
+      "B": "server4"
+    permissions:
+      owners:
+        - "2001"
+      super_admins: []
+      admins:
+        - "2002"
+      users:
+        - "2003"
+    features:
+      player_commands: true
+      admin_commands: false
+      server_management: false
+
+# 默认服务器组（当QQ群没有匹配的组时使用）
+default_group: "test_group_1"
+
+# 全局设置
+global_settings:
+  enable_cross_group_permissions: false
+  log_permission_checks: true
+  cache_permissions: true
+  cache_expire_time: 300

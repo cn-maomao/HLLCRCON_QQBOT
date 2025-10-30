@@ -92,7 +92,8 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
             await server_info_cmd.finish("❌ 多服务器管理功能未启用")
         
         # 获取服务器配置
-        server_config = multi_server_manager.get_server_config(args_text)
+        group_id = str(event.group_id) if hasattr(event, 'group_id') else None
+        server_config = multi_server_manager.get_server_config(args_text, group_id)
         if not server_config:
             await server_info_cmd.finish(f"❌ 未找到服务器: {args_text}")
         
@@ -128,7 +129,8 @@ async def handle_reload_config(bot: Bot, event: Event):
     try:
         # 检查权限
         user_id = str(event.user_id)
-        if not is_admin_user(user_id):
+        group_id = str(event.group_id) if hasattr(event, 'group_id') else None
+        if not is_admin_user(user_id, group_id):
             await reload_config_cmd.finish("❌ 权限不足，需要管理员权限")
         
         # 检查是否使用多服务器管理器

@@ -136,17 +136,31 @@ permission_groups:
         name: "BBB服务器"
         enabled: true
     
-    # 权限配置（QQ号从环境变量或运行时数据获取）
+    # 权限配置（具体的QQ号配置）
     permissions:
       # 主人权限 - 拥有所有权限
-      owners: []  # 将从 .env 的 SUPERUSERS 或 permissions.json 中读取
+      owners: ["123456789", "987654321"]  # 主要服务器组的主人QQ号
       # 超级管理员 - 拥有大部分管理权限
-      super_admins: []
+      super_admins: ["111222333", "444555666"]  # 主要服务器组的超级管理员QQ号
       # 普通管理员 - 基础管理权限
-      admins: []
+      admins: ["777888999", "101112131"]  # 主要服务器组的普通管理员QQ号
     
-    # 允许使用的QQ群组（从环境变量读取）
-    allowed_groups: []  # 将从 .env 的 ADMIN_GROUPS 和 PLAYER_GROUPS 中读取
+    # 允许使用的QQ群组
+    allowed_groups: ["100001", "100002", "100003"]  # 主要服务器组允许的QQ群
+    
+    # 服务器别名映射（该组专用）
+    server_aliases:
+      # 数字别名
+      "1": "server_1"
+      "2": "server_2"
+      # 字母别名
+      "a": "server_1"
+      "b": "server_2"
+      # 中文别名
+      "主服": "server_1"
+      "副服": "server_2"
+      "AAA": "server_1"
+      "BBB": "server_2"
     
     # 功能权限配置
     features:
@@ -169,53 +183,38 @@ permission_groups:
         name: "DDD开发服务器"
         enabled: true
     
+    # 权限配置（具体的QQ号配置）
     permissions:
-      owners: []
-      super_admins: []
-      admins: []
+      owners: ["555666777"]  # 测试服务器组的主人QQ号
+      super_admins: ["888999000"]  # 测试服务器组的超级管理员QQ号
+      admins: ["121314151", "161718192"]  # 测试服务器组的普通管理员QQ号
     
-    allowed_groups: []
+    # 允许使用的QQ群组
+    allowed_groups: ["200001", "200002"]  # 测试服务器组允许的QQ群
     
+    # 服务器别名映射（该组专用）
+    server_aliases:
+      # 数字别名（与主要组不同的映射）
+      "1": "server_3"
+      "2": "server_4"
+      # 字母别名
+      "c": "server_3"
+      "d": "server_4"
+      # 中文别名
+      "测试服": "server_3"
+      "开发服": "server_4"
+      "CCC": "server_3"
+      "DDD": "server_4"
+    
+    # 测试组功能权限（部分功能受限）
     features:
       allow_kick: true
       allow_ban: false  # 测试服务器不允许封禁
       allow_map_change: true
       allow_player_list: true
-      allow_server_management: false
+      allow_server_management: false  # 测试服务器不允许服务器管理
 
-# ==================== 服务器组配置 ====================
-server_groups:
-  # 主要服务器组
-  main_servers:
-    name: "主要服务器"
-    servers: ["server_1", "server_2"]
-    description: "主要的游戏服务器"
-  
-  # 测试服务器组
-  test_servers:
-    name: "测试服务器"
-    servers: ["server_3", "server_4"]
-    description: "用于测试的服务器"
 
-# ==================== 服务器别名配置 ====================
-server_aliases:
-  # 数字别名
-  "1": "server_1"
-  "2": "server_2"
-  "3": "server_3"
-  "4": "server_4"
-  
-  # 字母别名
-  "AAA": "server_1"
-  "BBB": "server_2"
-  "CCC": "server_3"
-  "DDD": "server_4"
-  
-  # 中文别名
-  "主服": "server_1"
-  "备服": "server_2"
-  "测试服": "server_3"
-  "活动服": "server_4"
 
 # ==================== 功能配置 ====================
 features:

@@ -187,6 +187,32 @@ def check_permission(level: PermissionLevel):
     """权限检查装饰器工厂"""
     async def _check(event: Event) -> bool:
         user_id = str(event.get_user_id())
+        # 优先使用新权限组系统
+        if hasattr(event, 'group_id'):
+            group_id = str(event.group_id)
+            from .permission_groups import get_permission_group_manager
+            manager = get_permission_group_manager()
+            server_group = manager.get_group_for_qq_group(group_id)
+            if server_group:
+                return server_group.has_permission(user_id, level)
+        
+        # 回退到旧权限系统
+        return permission_manager.has_permission(user_id, level)
+    
+    return Permission(_check)
+
+
+def check_permission_for_group(level: PermissionLevel, qq_group_id: str):
+    """基于QQ群的权限检查装饰器工厂"""
+    async def _check(event: Event) -> bool:
+        user_id = str(event.get_user_id())
+        from .permission_groups import get_permission_group_manager
+        manager = get_permission_group_manager()
+        server_group = manager.get_group_for_qq_group(qq_group_id)
+        if server_group:
+            return server_group.has_permission(user_id, level)
+        
+        # 回退到旧权限系统
         return permission_manager.has_permission(user_id, level)
     
     return Permission(_check)
@@ -202,19 +228,65 @@ SUPERUSER = ADMIN  # 原来的SUPERUSER权限映射到ADMIN
 
 
 # 权限检查辅助函数
-def is_owner(user_id: str) -> bool:
+def is_owner(user_id: str, qq_group_id: Optional[str] = None) -> bool:
     """检查用户是否为主人"""
+    if qq_group_id:
+        from .permission_groups import get_permission_group_manager
+        manager = get_permission_group_manager()
+        server_group = manager.get_group_for_qq_group(qq_group_id)
+        if server_group:
+            return server_group.has_permission(user_id, PermissionLevel.OWNER)
+    
     return permission_manager.has_permission(user_id, PermissionLevel.OWNER)
 
 
-def is_super_admin(user_id: str) -> bool:
+def is_super_admin(user_id: str, qq_group_id: Optional[str] = None) -> bool:
     """检查用户是否为超级管理员或更高权限"""
+    if qq_group_id:
+        from .permission_groups import get_permission_group_manager
+        manager = get_permission_group_manager()
+        server_group = manager.get_group_for_qq_group(qq_group_id)
+        if server_group:
+            return server_group.has_permission(user_id, PermissionLevel.SUPER_ADMIN)
+    
     return permission_manager.has_permission(user_id, PermissionLevel.SUPER_ADMIN)
 
 
-def is_admin(user_id: str) -> bool:
+def is_admin(user_id: str, qq_group_id: Optional[str] = None) -> bool:
     """检查用户是否为管理员或更高权限"""
+    if qq_group_id:
+        from .permission_groups import get_permission_group_manager
+        manager = get_permission_group_manager()
+        server_group = manager.get_group_for_qq_group(qq_group_id)
+        if server_group:
+            return server_group.has_permission(user_id, PermissionLevel.ADMIN)
+    
     return permission_manager.has_permission(user_id, PermissionLevel.ADMIN)
+
+
+def has_feature_permission(user_id: str, feature: str, qq_group_id: Optional[str] = None) -> bool:
+    """检查用户是否有特定功能权限"""
+    if qq_group_id:
+        from .permission_groups import get_permission_group_manager
+        manager = get_permission_group_manager()
+        server_group = manager.get_group_for_qq_group(qq_group_id)
+        if server_group:
+            return server_group.has_feature_permission(user_id, feature)
+    
+    # 旧系统默认管理员有所有功能权限
+    return is_admin(user_id)
+
+
+def get_user_permission_level(user_id: str, qq_group_id: Optional[str] = None) -> PermissionLevel:
+    """获取用户权限级别"""
+    if qq_group_id:
+        from .permission_groups import get_permission_group_manager
+        manager = get_permission_group_manager()
+        server_group = manager.get_group_for_qq_group(qq_group_id)
+        if server_group:
+            return server_group.get_user_permission(user_id)
+    
+    return permission_manager.get_user_permission(user_id)
 
 
 def get_permission_level_name(level: PermissionLevel) -> str:
@@ -233,5 +305,6 @@ __all__ = [
     "PermissionLevel", "PermissionManager", "permission_manager",
     "OWNER", "SUPER_ADMIN", "ADMIN", "SUPERUSER",
     "is_owner", "is_super_admin", "is_admin",
-    "get_permission_level_name", "check_permission"
+    "has_feature_permission", "get_user_permission_level",
+    "get_permission_level_name", "check_permission", "check_permission_for_group"
 ]

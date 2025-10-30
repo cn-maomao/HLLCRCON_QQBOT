@@ -36,6 +36,8 @@ class ServerGroup:
         self.permissions = group_data.get('permissions', {})
         self.allowed_groups = set(group_data.get('allowed_groups', []))
         self.features = group_data.get('features', {})
+        # 新增：每个服务器组的独立别名映射
+        self.server_aliases = group_data.get('server_aliases', {})
     
     def get_user_permission(self, user_id: str) -> PermissionLevel:
         """获取用户在此服务器组的权限级别"""
@@ -49,7 +51,7 @@ class ServerGroup:
             return PermissionLevel.USER
     
     def has_permission(self, user_id: str, required_level: PermissionLevel) -> bool:
-        """检查用户是否有指定权限"""
+        """检查用户是否有指定权限级别"""
         user_level = self.get_user_permission(user_id)
         level_hierarchy = {
             PermissionLevel.USER: 0,
@@ -57,6 +59,11 @@ class ServerGroup:
             PermissionLevel.SUPER_ADMIN: 2,
             PermissionLevel.OWNER: 3
         }
+        
+        # 如果用户级别或要求级别不在层次结构中，返回False
+        if user_level not in level_hierarchy or required_level not in level_hierarchy:
+            return False
+            
         return level_hierarchy[user_level] >= level_hierarchy[required_level]
     
     def has_feature_permission(self, user_id: str, feature: str) -> bool:
@@ -78,6 +85,41 @@ class ServerGroup:
     def get_enabled_servers(self) -> List[Dict[str, Any]]:
         """获取启用的游戏服务器列表"""
         return [server for server in self.game_servers if server.get('enabled', True)]
+    
+    def resolve_server_alias(self, server_identifier: str) -> Optional[str]:
+        """
+        解析服务器别名到实际的服务器ID
+        
+        Args:
+            server_identifier: 服务器标识符（可能是别名）
+            
+        Returns:
+            实际的服务器ID，如果找不到则返回None
+        """
+        # 转换为字符串
+        identifier = str(server_identifier)
+        
+        # 检查是否是别名
+        if identifier in self.server_aliases:
+            return self.server_aliases[identifier]
+        
+        # 检查是否是直接的服务器ID
+        for server_info in self.game_servers:
+            server_id = server_info.get('server_id') if isinstance(server_info, dict) else server_info
+            if server_id == identifier:
+                return server_id
+        
+        # 检查是否是服务器名称
+        for server_info in self.game_servers:
+            if isinstance(server_info, dict):
+                if server_info.get('name') == identifier:
+                    return server_info.get('server_id')
+        
+        return None
+    
+    def get_server_aliases(self) -> Dict[str, str]:
+        """获取该服务器组的所有别名映射"""
+        return self.server_aliases.copy()
 
 
 class PermissionGroupManager:
@@ -266,6 +308,51 @@ class PermissionGroupManager:
             }
         return result
     
+    def resolve_server_alias_for_qq_group(self, qq_group_id: str, server_identifier: str) -> Optional[str]:
+        """
+        根据QQ群ID解析服务器别名
+        
+        Args:
+            qq_group_id: QQ群ID
+            server_identifier: 服务器标识符（可能是别名）
+            
+        Returns:
+            实际的服务器ID，如果找不到则返回None
+        """
+        # 获取QQ群对应的服务器组
+        server_group = self.get_group_for_qq_group(qq_group_id)
+        if server_group:
+            return server_group.resolve_server_alias(server_identifier)
+        
+        # 如果没有找到对应的服务器组，尝试使用默认组
+        default_group = self.get_default_group()
+        if default_group:
+            return default_group.resolve_server_alias(server_identifier)
+        
+        return None
+    
+    def get_server_aliases_for_qq_group(self, qq_group_id: str) -> Dict[str, str]:
+        """
+        获取QQ群对应的服务器别名映射
+        
+        Args:
+            qq_group_id: QQ群ID
+            
+        Returns:
+            服务器别名映射字典
+        """
+        # 获取QQ群对应的服务器组
+        server_group = self.get_group_for_qq_group(qq_group_id)
+        if server_group:
+            return server_group.get_server_aliases()
+        
+        # 如果没有找到对应的服务器组，返回默认组的别名
+        default_group = self.get_default_group()
+        if default_group:
+            return default_group.get_server_aliases()
+        
+        return {}
+    
     def _save_config(self):
         """保存配置到文件"""
         try:
@@ -281,6 +368,7 @@ class PermissionGroupManager:
                     'game_servers': server_group.game_servers,
                     'permissions': server_group.permissions,
                     'allowed_groups': list(server_group.allowed_groups),
+                    'server_aliases': server_group.server_aliases,  # 保存服务器别名
                     'features': server_group.features
                 }
             
