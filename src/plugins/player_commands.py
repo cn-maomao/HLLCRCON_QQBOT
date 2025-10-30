@@ -30,7 +30,7 @@ CRCON_API_BASE_URL_4 = config.crcon_api_base_url_4
 CRCON_API_TOKEN = config.crcon_api_token
 
 # 注册指令
-server_info = on_command("服务器信息", aliases={"服务器状态", "server", "status", "查服"}, priority=5)
+server_info = on_command("服务器信息", aliases={"服务器状态", "server", "查服"}, priority=5)
 vip_check = on_command("查询vip", aliases={"vip查询", "checkvip"}, priority=5)
 online_players = on_command("在线玩家", aliases={"玩家列表", "players", "online"}, priority=5)
 help_cmd = on_command("帮助", aliases={"help", "指令"}, priority=5)

@@ -21,9 +21,9 @@ from ..config import is_admin_user
 # 注册命令
 permission_groups_cmd = on_command("权限组列表", aliases={"权限组", "服务器组列表", "服务器组"}, priority=5)
 permission_info_cmd = on_command("权限组详情", aliases={"服务器组详情", "权限详情"}, priority=5)
-add_permission_cmd = on_command("添加权限", aliases={"添加管理员", "授权"}, priority=5)
-remove_permission_cmd = on_command("移除权限", aliases={"移除管理员", "取消授权"}, priority=5)
-my_permission_cmd = on_command("我的权限", aliases={"权限查询", "查看权限"}, priority=5)
+add_permission_cmd = on_command("添加权限", aliases={"授权"}, priority=5)
+remove_permission_cmd = on_command("移除权限", aliases={"取消授权"}, priority=5)
+my_permission_cmd = on_command("我的权限", aliases={"权限查询"}, priority=5)
 reload_permission_cmd = on_command("重载权限配置", aliases={"刷新权限", "重载权限"}, priority=5)
 
 

@@ -12,7 +12,7 @@ from ..config import config, get_all_servers, multi_server_manager, is_admin_use
 
 # 注册命令
 server_list_cmd = on_command("服务器列表", aliases={"服务器", "servers", "serverlist"}, priority=5)
-server_info_cmd = on_command("服务器详情", aliases={"服务器信息", "serverinfo"}, priority=5)
+server_info_cmd = on_command("服务器详情", aliases={"serverinfo", "详情"}, priority=5)
 reload_config_cmd = on_command("重载配置", aliases={"reload", "reloadconfig"}, priority=5)
 
 @server_list_cmd.handle()

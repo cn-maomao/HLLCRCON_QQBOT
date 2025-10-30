@@ -13,11 +13,12 @@ from nonebot.params import CommandArg
 from nonebot.adapters.onebot.v11 import Message
 from loguru import logger
 
-# 导入定时任务
+# 导入调度器
 require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
 
 from ..config import config, get_server_name, validate_server_num
+from ..crcon_api import CRCONAPIClient
 
 # 注册命令
 enhanced_player_list = on_command("详细玩家列表", aliases={"详细在线玩家", "玩家详情", "playerdetails"}, priority=5)
@@ -26,21 +27,44 @@ enhanced_player_list = on_command("详细玩家列表", aliases={"详细在线�
 player_data_cache: Dict[str, Any] = {}
 last_update_time: Optional[datetime] = None
 
-# 数据文件路径
-DATA_FILE_PATH = Path("d:/daima code/CRCON_QQBOT/get_team_view.json")
-
-def load_team_view_data() -> Optional[Dict[str, Any]]:
-    """从文件加载团队视图数据"""
+async def get_team_view_data_from_api(server_num: int) -> Optional[Dict[str, Any]]:
+    """从API获取团队视图数据"""
     try:
-        if not DATA_FILE_PATH.exists():
-            logger.warning(f"团队视图数据文件不存在: {DATA_FILE_PATH}")
+        server_config = config.servers.get(str(server_num))
+        if not server_config:
+            logger.error(f"服务器 {server_num} 配置不存在")
             return None
             
-        with open(DATA_FILE_PATH, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return data
+        async with CRCONAPIClient(server_config['url'], server_config['api_token']) as api_client:
+            # 使用GetServerInformation: players获取详细玩家信息
+            response = await api_client._request("GET", "get_server_information", {"name": "players"})
+            if response and "players" in response:
+                # 转换为团队视图格式
+                players_data = response["players"]
+                team_view = {
+                    "allied": {"squads": {}, "players": []},
+                    "axis": {"squads": {}, "players": []}
+                }
+                
+                for player in players_data:
+                    team_name = "allied" if player.get("team") == 1 else "axis"
+                    platoon = player.get("platoon", "无小队")
+                    
+                    # 初始化小队
+                    if platoon not in team_view[team_name]["squads"]:
+                        team_view[team_name]["squads"][platoon] = {"players": []}
+                    
+                    # 添加玩家到小队
+                    team_view[team_name]["squads"][platoon]["players"].append(player)
+                    team_view[team_name]["players"].append(player)
+                
+                return team_view
+            else:
+                logger.warning(f"服务器 {server_num} 返回的数据格式不正确")
+                return None
+                
     except Exception as e:
-        logger.error(f"加载团队视图数据失败: {e}")
+        logger.error(f"从API获取团队视图数据失败: {e}")
         return None
 
 def parse_player_data(team_data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -55,23 +79,24 @@ def parse_player_data(team_data: Dict[str, Any]) -> List[Dict[str, Any]]:
             continue
             
         for player in squad_data['players']:
-            # 提取关键玩家信息
+            # 提取关键玩家信息，适配新的API数据格式
+            score_data = player.get('scoreData', {})
             player_info = {
                 'name': player.get('name', '未知玩家'),
-                'player_id': player.get('player_id', ''),
-                'team': player.get('team', ''),
+                'player_id': player.get('iD', ''),  # API返回的是'iD'
+                'team': "盟军" if player.get('team') == 1 else "轴心国",
                 'squad': squad_name,
                 'role': player.get('role', ''),
                 'loadout': player.get('loadout', ''),
                 'level': player.get('level', 0),
                 'kills': player.get('kills', 0),
                 'deaths': player.get('deaths', 0),
-                'combat': player.get('combat', 0),
-                'offense': player.get('offense', 0),
-                'defense': player.get('defense', 0),
-                'support': player.get('support', 0),
+                'combat': score_data.get('cOMBAT', 0),  # API返回的是'cOMBAT'
+                'offense': score_data.get('offense', 0),
+                'defense': score_data.get('defense', 0),
+                'support': score_data.get('support', 0),
                 'platform': player.get('platform', ''),
-                'clan_tag': player.get('clan_tag', ''),
+                'clan_tag': player.get('clanTag', ''),  # API返回的是'clanTag'
                 'is_vip': player.get('is_vip', False),
                 'country': player.get('country', ''),
             }
@@ -79,34 +104,40 @@ def parse_player_data(team_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     
     return players
 
-def update_player_cache():
+async def update_player_cache():
     """更新玩家数据缓存"""
     global player_data_cache, last_update_time
     
     try:
-        data = load_team_view_data()
-        if not data or 'result' not in data:
-            logger.warning("无法获取有效的团队视图数据")
-            return
-        
-        result = data['result']
         new_cache = {}
         
-        # 解析盟军数据
-        if 'allies' in result:
-            allies_players = parse_player_data(result['allies'])
-            new_cache['allies'] = allies_players
-        
-        # 解析轴心国数据
-        if 'axis' in result:
-            axis_players = parse_player_data(result['axis'])
-            new_cache['axis'] = axis_players
+        # 遍历所有配置的服务器
+        for server_num in config.servers.keys():
+            server_num_int = int(server_num)
+            data = await get_team_view_data_from_api(server_num_int)
+            
+            if not data:
+                logger.warning(f"无法获取服务器 {server_num} 的团队视图数据")
+                continue
+            
+            server_cache = {}
+            
+            # 解析盟军数据
+            if 'allied' in data:
+                allied_players = parse_player_data(data['allied'])
+                server_cache['allied'] = allied_players
+            
+            # 解析轴心国数据
+            if 'axis' in data:
+                axis_players = parse_player_data(data['axis'])
+                server_cache['axis'] = axis_players
+            
+            new_cache[server_num] = server_cache
+            logger.info(f"已更新服务器 {server_num} 的玩家数据缓存")
         
         player_data_cache = new_cache
         last_update_time = datetime.now()
-        
-        total_players = len(new_cache.get('allies', [])) + len(new_cache.get('axis', []))
-        logger.info(f"玩家数据缓存已更新，共 {total_players} 名玩家")
+        logger.info("玩家数据缓存更新完成")
         
     except Exception as e:
         logger.error(f"更新玩家数据缓存失败: {e}")
@@ -116,7 +147,7 @@ def update_player_cache():
 async def scheduled_update_player_data():
     """定时更新玩家数据"""
     logger.info("开始定时更新玩家数据...")
-    update_player_cache()
+    await update_player_cache()
 
 def format_role_name(role: str) -> str:
     """格式化兵种名称为中文"""
@@ -196,62 +227,135 @@ def create_player_table_message(players: List[Dict[str, Any]], team_name: str) -
 async def handle_enhanced_player_list(bot: Bot, event: Event, args: Message = CommandArg()):
     """处理详细玩家列表查询"""
     try:
+        # 解析参数
+        arg_text = args.extract_plain_text().strip()
+        server_num = None
+        
+        if arg_text:
+            try:
+                server_num = int(arg_text)
+                if not validate_server_num(server_num):
+                    await enhanced_player_list.finish(f"❌ 无效的服务器编号: {server_num}")
+            except ValueError:
+                await enhanced_player_list.finish("❌ 服务器编号必须是数字")
+        
         # 如果缓存为空或数据过期，立即更新
         if not player_data_cache or not last_update_time or \
            (datetime.now() - last_update_time).total_seconds() > 360:  # 6分钟
-            update_player_cache()
+            await update_player_cache()
         
         if not player_data_cache:
             await enhanced_player_list.finish("❌ 无法获取玩家数据，请稍后重试")
         
-        # 获取盟军和轴心国玩家数据
-        allies_players = player_data_cache.get('allies', [])
-        axis_players = player_data_cache.get('axis', [])
-        
-        total_players = len(allies_players) + len(axis_players)
-        
-        if total_players == 0:
-            await enhanced_player_list.finish("📭 当前没有玩家在线")
-        
-        # 创建转发消息
-        forward_messages = []
-        
-        # 添加标题消息
-        update_time_str = last_update_time.strftime("%H:%M:%S") if last_update_time else "未知"
-        title_msg = f"🎮 详细在线玩家列表\n👥 总人数: {total_players}人\n🕐 更新时间: {update_time_str}\n⏰ 每6分钟自动更新"
-        
-        forward_messages.append({
-            "type": "node",
-            "data": {
-                "name": "CRCON机器人",
-                "uin": str(bot.self_id),
-                "content": title_msg
-            }
-        })
-        
-        # 添加盟军玩家信息
-        if allies_players:
-            allies_msg = create_player_table_message(allies_players, "盟军")
+        # 如果指定了服务器编号，只显示该服务器的数据
+        if server_num:
+            server_key = f"server_{server_num}"
+            if server_key not in player_data_cache:
+                await enhanced_player_list.finish(f"❌ 服务器{server_num}数据不可用")
+            
+            server_data = player_data_cache[server_key]
+            allies_players = server_data.get('allied', [])
+            axis_players = server_data.get('axis', [])
+            total_players = len(allies_players) + len(axis_players)
+            
+            if total_players == 0:
+                await enhanced_player_list.finish(f"📭 服务器{server_num}当前没有玩家在线")
+            
+            # 创建转发消息
+            forward_messages = []
+            
+            # 添加标题消息
+            update_time_str = last_update_time.strftime("%H:%M:%S") if last_update_time else "未知"
+            server_name = get_server_name(server_num)
+            title_msg = f"🎮 {server_name} - 详细在线玩家列表\n👥 总人数: {total_players}人\n🕐 更新时间: {update_time_str}\n⏰ 每6分钟自动更新"
+            
             forward_messages.append({
                 "type": "node",
                 "data": {
                     "name": "CRCON机器人",
                     "uin": str(bot.self_id),
-                    "content": allies_msg
+                    "content": title_msg
                 }
             })
-        
-        # 添加轴心国玩家信息
-        if axis_players:
-            axis_msg = create_player_table_message(axis_players, "轴心国")
+            
+            # 添加盟军玩家信息
+            if allies_players:
+                allies_msg = create_player_table_message(allies_players, "盟军")
+                forward_messages.append({
+                    "type": "node",
+                    "data": {
+                        "name": "CRCON机器人",
+                        "uin": str(bot.self_id),
+                        "content": allies_msg
+                    }
+                })
+            
+            # 添加轴心国玩家信息
+            if axis_players:
+                axis_msg = create_player_table_message(axis_players, "轴心国")
+                forward_messages.append({
+                    "type": "node",
+                    "data": {
+                        "name": "CRCON机器人",
+                        "uin": str(bot.self_id),
+                        "content": axis_msg
+                    }
+                })
+        else:
+            # 显示所有服务器的汇总数据
+            all_allies = []
+            all_axis = []
+            total_players = 0
+            
+            for server_key, server_data in player_data_cache.items():
+                allies = server_data.get('allied', [])
+                axis = server_data.get('axis', [])
+                all_allies.extend(allies)
+                all_axis.extend(axis)
+                total_players += len(allies) + len(axis)
+            
+            if total_players == 0:
+                await enhanced_player_list.finish("📭 所有服务器当前都没有玩家在线")
+            
+            # 创建转发消息
+            forward_messages = []
+            
+            # 添加标题消息
+            update_time_str = last_update_time.strftime("%H:%M:%S") if last_update_time else "未知"
+            title_msg = f"🎮 所有服务器 - 详细在线玩家列表\n👥 总人数: {total_players}人\n🕐 更新时间: {update_time_str}\n⏰ 每6分钟自动更新\n💡 使用 /详细玩家列表 [服务器编号] 查看指定服务器"
+            
             forward_messages.append({
                 "type": "node",
                 "data": {
                     "name": "CRCON机器人",
                     "uin": str(bot.self_id),
-                    "content": axis_msg
+                    "content": title_msg
                 }
             })
+            
+            # 添加盟军玩家信息
+            if all_allies:
+                allies_msg = create_player_table_message(all_allies, "盟军")
+                forward_messages.append({
+                    "type": "node",
+                    "data": {
+                        "name": "CRCON机器人",
+                        "uin": str(bot.self_id),
+                        "content": allies_msg
+                    }
+                })
+            
+            # 添加轴心国玩家信息
+            if all_axis:
+                axis_msg = create_player_table_message(all_axis, "轴心国")
+                forward_messages.append({
+                    "type": "node",
+                    "data": {
+                        "name": "CRCON机器人",
+                        "uin": str(bot.self_id),
+                        "content": axis_msg
+                    }
+                })
         
         # 添加说明信息
         info_msg = "💡 功能说明:\n"
@@ -285,4 +389,4 @@ async def handle_enhanced_player_list(bot: Bot, event: Event, args: Message = Co
 async def init_player_data():
     """启动时初始化玩家数据"""
     logger.info("初始化玩家数据缓存...")
-    update_player_cache()
+    await update_player_cache()
