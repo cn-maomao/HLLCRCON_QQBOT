@@ -187,7 +187,12 @@ def check_permission(level: PermissionLevel):
     """权限检查装饰器工厂"""
     async def _check(event: Event) -> bool:
         user_id = str(event.get_user_id())
-        # 优先使用新权限组系统
+        
+        # 首先检查全局权限系统
+        if permission_manager.has_permission(user_id, level):
+            return True
+        
+        # 如果全局权限不足，再检查群权限系统
         if hasattr(event, 'group_id'):
             group_id = str(event.group_id)
             from .permission_groups import get_permission_group_manager
@@ -196,8 +201,7 @@ def check_permission(level: PermissionLevel):
             if server_group:
                 return server_group.has_permission(user_id, level)
         
-        # 回退到旧权限系统
-        return permission_manager.has_permission(user_id, level)
+        return False
     
     return Permission(_check)
 

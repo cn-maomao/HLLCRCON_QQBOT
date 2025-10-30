@@ -149,11 +149,28 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
                 server_group = permission_manager.get_group_for_qq_group(group_id)
                 if server_group and server_group.game_servers:
                     # 显示群绑定服务器组中的服务器
-                    for server_id in server_group.game_servers:
+                    for server_config in server_group.game_servers:
                         try:
+                            # 处理服务器配置对象
+                            if isinstance(server_config, dict):
+                                server_id = server_config.get('server_id', '')
+                                server_name = server_config.get('name', '')
+                                enabled = server_config.get('enabled', True)
+                                
+                                # 跳过禁用的服务器
+                                if not enabled:
+                                    continue
+                            else:
+                                # 如果是字符串，直接使用
+                                server_id = str(server_config)
+                                server_name = ""
+                            
                             # 将服务器ID转换为数字（如果是数字字符串）
                             if server_id.isdigit():
                                 server_num = int(server_id)
+                            elif server_id.startswith('server_') and server_id[7:].isdigit():
+                                # 处理 server_1, server_2 等格式
+                                server_num = int(server_id[7:])
                             else:
                                 # 如果不是数字，尝试通过多服务器管理器解析
                                 from ..multi_server_manager import multi_server_manager
@@ -167,17 +184,18 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
                                     continue
                             
                             server_msg = await get_server_info(server_num)
+                            display_name = server_name if server_name else get_server_name(server_num, group_id)
                             server_node = {
                                 "type": "node",
                                 "data": {
-                                    "name": f"{get_server_name(server_num, group_id)}",
+                                    "name": display_name,
                                     "uin": str(bot.self_id),
                                     "content": server_msg
                                 }
                             }
                             nodes.append(server_node)
                         except Exception as e:
-                            logger.error(f"获取服务器{server_id}信息失败: {e}")
+                            logger.error(f"获取服务器{server_config}信息失败: {e}")
                             error_msg = f"🎮 {get_server_name(server_id, group_id)} 状态信息\n" + "=" * 30 + "\n❌ 服务器连接失败"
                             error_node = {
                                 "type": "node",
