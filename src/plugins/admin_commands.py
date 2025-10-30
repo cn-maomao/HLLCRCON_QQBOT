@@ -796,11 +796,11 @@ async def handle_admin_help(bot: Bot, event: Event):
         logger.info(f"收到adminhelp命令，用户ID: {user_id}")
         
         # 检查权限
-        from ..permissions import permission_manager
+        from ..permissions import permission_manager, PermissionLevel, get_permission_level_name
         user_permission = permission_manager.get_user_permission(user_id)
-        logger.info(f"用户 {user_id} 的权限级别: {user_permission}")
+        logger.info(f"用户 {user_id} 的权限级别: {get_permission_level_name(user_permission)}")
         
-        if user_permission == "user":
+        if user_permission == PermissionLevel.USER:
             logger.warning(f"用户 {user_id} 权限不足，无法使用管理命令")
             await admin_help.finish("❌ 权限不足，此命令仅限管理员使用")
             return

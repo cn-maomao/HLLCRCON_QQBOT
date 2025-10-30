@@ -142,7 +142,8 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
             group_id = str(event.group_id) if hasattr(event, 'group_id') else None
             
             # 导入权限管理器来获取群绑定的服务器组
-            from ..permission_groups import permission_manager
+            from ..permission_groups import get_permission_group_manager
+            permission_manager = get_permission_group_manager()
             
             if group_id:
                 server_group = permission_manager.get_group_for_qq_group(group_id)
