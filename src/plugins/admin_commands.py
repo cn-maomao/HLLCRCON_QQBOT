@@ -791,6 +791,19 @@ async def handle_set_idle_time(bot: Bot, event: Event, args: Message = CommandAr
 async def handle_admin_help(bot: Bot, event: Event):
     """处理管理帮助指令"""
     try:
+        # 添加调试日志
+        user_id = event.get_user_id()
+        logger.info(f"收到adminhelp命令，用户ID: {user_id}")
+        
+        # 检查权限
+        from ..permissions import permission_manager
+        user_permission = permission_manager.get_user_permission(user_id)
+        logger.info(f"用户 {user_id} 的权限级别: {user_permission}")
+        
+        if user_permission == "user":
+            logger.warning(f"用户 {user_id} 权限不足，无法使用管理命令")
+            await admin_help.finish("❌ 权限不足，此命令仅限管理员使用")
+            return
         # 直接构建普通消息，避免转发消息的兼容性问题
         message = "🛡️ CRCON管理机器人 - 管理功能\n"
         message += "=" * 40 + "\n\n"

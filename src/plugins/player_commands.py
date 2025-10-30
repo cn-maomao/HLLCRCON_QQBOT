@@ -136,51 +136,133 @@ async def handle_server_info(bot: Bot, event: Event, args: Message = CommandArg(
         }
         nodes.append(title_node)
         
-        # 如果没有参数，显示所有服务器信息
+        # 如果没有参数，显示群绑定服务器组的服务器信息
         if not arg_text:
-            for server_num in [1, 2, 3, 4]:
-                try:
+            # 获取群ID和对应的服务器组
+            group_id = str(event.group_id) if hasattr(event, 'group_id') else None
+            
+            # 导入权限管理器来获取群绑定的服务器组
+            from ..permission_groups import permission_manager
+            
+            if group_id:
+                server_group = permission_manager.get_group_for_qq_group(group_id)
+                if server_group and server_group.game_servers:
+                    # 显示群绑定服务器组中的服务器
+                    for server_id in server_group.game_servers:
+                        try:
+                            # 将服务器ID转换为数字（如果是数字字符串）
+                            if server_id.isdigit():
+                                server_num = int(server_id)
+                            else:
+                                # 如果不是数字，尝试通过多服务器管理器解析
+                                from ..multi_server_manager import multi_server_manager
+                                if multi_server_manager:
+                                    resolved_id = multi_server_manager.resolve_server_id(server_id, group_id)
+                                    if resolved_id and resolved_id.isdigit():
+                                        server_num = int(resolved_id)
+                                    else:
+                                        continue
+                                else:
+                                    continue
+                            
+                            server_msg = await get_server_info(server_num)
+                            server_node = {
+                                "type": "node",
+                                "data": {
+                                    "name": f"{get_server_name(server_num, group_id)}",
+                                    "uin": str(bot.self_id),
+                                    "content": server_msg
+                                }
+                            }
+                            nodes.append(server_node)
+                        except Exception as e:
+                            logger.error(f"获取服务器{server_id}信息失败: {e}")
+                            error_msg = f"🎮 {get_server_name(server_id, group_id)} 状态信息\n" + "=" * 30 + "\n❌ 服务器连接失败"
+                            error_node = {
+                                "type": "node",
+                                "data": {
+                                    "name": f"{get_server_name(server_id, group_id)}",
+                                    "uin": str(bot.self_id),
+                                    "content": error_msg
+                                }
+                            }
+                            nodes.append(error_node)
+                else:
+                    # 如果没有找到群绑定的服务器组，显示默认服务器
+                    await server_info.finish("❌ 当前群未绑定任何服务器组，请联系管理员配置")
+            else:
+                # 私聊情况，显示所有服务器
+                for server_num in [1, 2, 3, 4]:
+                    try:
+                        server_msg = await get_server_info(server_num)
+                        server_node = {
+                            "type": "node",
+                            "data": {
+                                "name": f"{get_server_name(server_num)}",
+                                "uin": str(bot.self_id),
+                                "content": server_msg
+                            }
+                        }
+                        nodes.append(server_node)
+                    except Exception as e:
+                        logger.error(f"获取{get_server_name(server_num)}信息失败: {e}")
+                        error_msg = f"🎮 {get_server_name(server_num)} 状态信息\n" + "=" * 30 + "\n❌ 服务器连接失败"
+                        error_node = {
+                            "type": "node",
+                            "data": {
+                                "name": f"{get_server_name(server_num)}",
+                                "uin": str(bot.self_id),
+                                "content": error_msg
+                            }
+                        }
+                        nodes.append(error_node)
+        else:
+            # 如果有参数，解析服务器编号或别名
+            group_id = str(event.group_id) if hasattr(event, 'group_id') else None
+            
+            # 尝试通过多服务器管理器解析服务器标识符
+            from ..multi_server_manager import multi_server_manager
+            
+            if multi_server_manager:
+                server_config = multi_server_manager.get_server_config(arg_text, group_id)
+                if server_config:
+                    # 从配置中提取服务器编号
+                    server_id = server_config.server_id
+                    if server_id.isdigit():
+                        server_num = int(server_id)
+                        server_msg = await get_server_info(server_num)
+                        server_node = {
+                            "type": "node",
+                            "data": {
+                                "name": f"{get_server_name(server_num, group_id)}",
+                                "uin": str(bot.self_id),
+                                "content": server_msg
+                            }
+                        }
+                        nodes.append(server_node)
+                    else:
+                        await server_info.finish(f"❌ 服务器配置错误: {arg_text}")
+                else:
+                    await server_info.finish(f"❌ 未找到服务器: {arg_text}\n请使用正确的服务器编号或别名")
+            else:
+                # 回退到原来的逻辑
+                if arg_text.isdigit():
+                    server_num = int(arg_text)
+                    if not validate_server_num(server_num, group_id):
+                        await server_info.finish("❌ 服务器编号无效或当前群无权访问")
+                    
                     server_msg = await get_server_info(server_num)
                     server_node = {
                         "type": "node",
                         "data": {
-                            "name": f"{get_server_name(server_num)}",
+                            "name": f"{get_server_name(server_num, group_id)}",
                             "uin": str(bot.self_id),
                             "content": server_msg
                         }
                     }
                     nodes.append(server_node)
-                except Exception as e:
-                    logger.error(f"获取{get_server_name(server_num)}信息失败: {e}")
-                    error_msg = f"🎮 {get_server_name(server_num)} 状态信息\n" + "=" * 30 + "\n❌ 服务器连接失败"
-                    error_node = {
-                        "type": "node",
-                        "data": {
-                            "name": f"{get_server_name(server_num)}",
-                            "uin": str(bot.self_id),
-                            "content": error_msg
-                        }
-                    }
-                    nodes.append(error_node)
-        else:
-            # 如果有参数，解析服务器编号
-            if arg_text.isdigit():
-                server_num = int(arg_text)
-                if not validate_server_num(server_num):
-                    await server_info.finish("❌ 服务器编号只能是1、2、3或4")
-                
-                server_msg = await get_server_info(server_num)
-                server_node = {
-                    "type": "node",
-                    "data": {
-                        "name": f"{get_server_name(server_num)}",
-                        "uin": str(bot.self_id),
-                        "content": server_msg
-                    }
-                }
-                nodes.append(server_node)
-            else:
-                await server_info.finish("❌ 请输入正确的服务器编号（1、2或3），或不输入参数查看所有服务器")
+                else:
+                    await server_info.finish("❌ 请输入正确的服务器编号或别名")
         
         # 发送转发消息
         try:
