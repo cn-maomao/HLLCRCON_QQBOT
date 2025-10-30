@@ -30,41 +30,31 @@ last_update_time: Optional[datetime] = None
 async def get_team_view_data_from_api(server_num: int) -> Optional[Dict[str, Any]]:
     """从API获取团队视图数据"""
     try:
-        server_config = config.servers.get(str(server_num))
-        if not server_config:
-            logger.error(f"服务器 {server_num} 配置不存在")
+        # 验证服务器编号
+        if not validate_server_num(server_num):
+            logger.error(f"无效的服务器编号: {server_num}")
             return None
+        
+        # 获取API客户端
+        from ..config import get_api_base_url
+        
+        base_url = get_api_base_url(server_num)
+        api_client = CRCONAPIClient(base_url, config.crcon_api_token)
+        
+        # 获取玩家数据
+        async with api_client as client:
+            players_data = await client.get_detailed_players()
             
-        async with CRCONAPIClient(server_config['url'], server_config['api_token']) as api_client:
-            # 使用GetServerInformation: players获取详细玩家信息
-            response = await api_client._request("GET", "get_server_information", {"name": "players"})
-            if response and "players" in response:
-                # 转换为团队视图格式
-                players_data = response["players"]
-                team_view = {
-                    "allied": {"squads": {}, "players": []},
-                    "axis": {"squads": {}, "players": []}
-                }
-                
-                for player in players_data:
-                    team_name = "allied" if player.get("team") == 1 else "axis"
-                    platoon = player.get("platoon", "无小队")
-                    
-                    # 初始化小队
-                    if platoon not in team_view[team_name]["squads"]:
-                        team_view[team_name]["squads"][platoon] = {"players": []}
-                    
-                    # 添加玩家到小队
-                    team_view[team_name]["squads"][platoon]["players"].append(player)
-                    team_view[team_name]["players"].append(player)
-                
-                return team_view
-            else:
-                logger.warning(f"服务器 {server_num} 返回的数据格式不正确")
+            if not players_data:
                 return None
-                
+            
+            return {
+                'allied': players_data.get('allied', {}),
+                'axis': players_data.get('axis', {})
+            }
+            
     except Exception as e:
-        logger.error(f"从API获取团队视图数据失败: {e}")
+        logger.error(f"获取服务器 {server_num} 团队视图数据失败: {e}")
         return None
 
 def parse_player_data(team_data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -111,10 +101,12 @@ async def update_player_cache():
     try:
         new_cache = {}
         
-        # 遍历所有配置的服务器
-        for server_num in config.servers.keys():
-            server_num_int = int(server_num)
-            data = await get_team_view_data_from_api(server_num_int)
+        # 遍历所有配置的服务器 (1-4)
+        for server_num in [1, 2, 3, 4]:
+            if not validate_server_num(server_num):
+                continue
+                
+            data = await get_team_view_data_from_api(server_num)
             
             if not data:
                 logger.warning(f"无法获取服务器 {server_num} 的团队视图数据")
@@ -132,15 +124,20 @@ async def update_player_cache():
                 axis_players = parse_player_data(data['axis'])
                 server_cache['axis'] = axis_players
             
-            new_cache[server_num] = server_cache
+            server_key = f"server_{server_num}"
+            new_cache[server_key] = server_cache
             logger.info(f"已更新服务器 {server_num} 的玩家数据缓存")
         
+        # 更新全局缓存
         player_data_cache = new_cache
         last_update_time = datetime.now()
-        logger.info("玩家数据缓存更新完成")
+        
+        logger.info(f"玩家数据缓存更新完成，共 {len(new_cache)} 个服务器")
         
     except Exception as e:
         logger.error(f"更新玩家数据缓存失败: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 # 定时任务：每6分钟更新一次玩家数据
 @scheduler.scheduled_job("interval", minutes=6, id="update_player_data")
