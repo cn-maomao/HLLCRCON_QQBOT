@@ -116,12 +116,18 @@ class MultiServerManager:
                         env_var = api_token[2:-1]
                         api_token = os.getenv(env_var, '')
                     
+                    # 处理 api_base_url 环境变量
+                    api_base_url = server_data.get('api_base_url', '')
+                    if api_base_url.startswith('${') and api_base_url.endswith('}'):
+                        env_var = api_base_url[2:-1]
+                        api_base_url = os.getenv(env_var, '')
+                    
                     server_config = ServerConfig(
                         server_id=server_id,
                         name=server_data.get('name', f'服务器{server_id}'),
                         display_name=server_data.get('display_name', server_id),
                         description=server_data.get('description', ''),
-                        api_base_url=server_data.get('api_base_url', ''),
+                        api_base_url=api_base_url,
                         api_token=api_token,
                         max_players=server_data.get('max_players', 100),
                         region=server_data.get('region', 'Unknown'),
@@ -193,6 +199,12 @@ class MultiServerManager:
             # 直接匹配服务器ID
             if identifier in self.servers:
                 return identifier
+            
+            # 如果是纯数字，尝试匹配 server_X 格式
+            if identifier.isdigit():
+                server_id = f"server_{identifier}"
+                if server_id in self.servers:
+                    return server_id
             
             # 如果提供了QQ群ID，优先使用权限组系统的别名映射
             if qq_group_id:

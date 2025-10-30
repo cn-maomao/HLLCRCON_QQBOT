@@ -68,23 +68,37 @@ def parse_player_data(team_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         for player in squad_data['players']:
             # 提取关键玩家信息，适配新的API数据格式
             score_data = player.get('scoreData', {})
+            
+            # 更灵活的队伍判断逻辑
+            team_value = player.get('team', 0)
+            if isinstance(team_value, str):
+                if 'allied' in team_value.lower() or team_value == '1':
+                    team_name = "盟军"
+                elif 'axis' in team_value.lower() or team_value == '0':
+                    team_name = "轴心国"
+                else:
+                    team_name = "未知"
+            else:
+                # 数字类型的队伍判断
+                team_name = "盟军" if team_value == 1 else "轴心国"
+            
             player_info = {
                 'name': player.get('name', '未知玩家'),
-                'player_id': player.get('iD', ''),  # API返回的是'iD'
-                'team': "盟军" if player.get('team') == 1 else "轴心国",
+                'player_id': player.get('iD', '') or player.get('id', '') or player.get('player_id', ''),  # 尝试多种可能的字段名
+                'team': team_name,
                 'squad': squad_name,
                 'role': player.get('role', ''),
                 'loadout': player.get('loadout', ''),
                 'level': player.get('level', 0),
                 'kills': player.get('kills', 0),
                 'deaths': player.get('deaths', 0),
-                'combat': score_data.get('cOMBAT', 0),  # API返回的是'cOMBAT'
-                'offense': score_data.get('offense', 0),
-                'defense': score_data.get('defense', 0),
+                'combat': score_data.get('cOMBAT', 0) or score_data.get('combat', 0),  # 尝试多种可能的字段名
+                'offense': score_data.get('offense', 0) or score_data.get('attack', 0),
+                'defense': score_data.get('defense', 0) or score_data.get('defend', 0),
                 'support': score_data.get('support', 0),
                 'platform': player.get('platform', ''),
-                'clan_tag': player.get('clanTag', ''),  # API返回的是'clanTag'
-                'is_vip': player.get('is_vip', False),
+                'clan_tag': player.get('clanTag', '') or player.get('clan_tag', ''),  # 尝试多种可能的字段名
+                'is_vip': player.get('is_vip', False) or player.get('vip', False),
                 'country': player.get('country', ''),
             }
             players.append(player_info)
@@ -109,17 +123,54 @@ async def update_player_cache():
                 logger.warning(f"无法获取服务器 {server_num} 的团队视图数据")
                 continue
             
+            # 添加调试日志查看数据结构
+            logger.info(f"服务器 {server_num} team_view 数据结构: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+            
             server_cache = {}
             
-            # 解析盟军数据
-            if 'allied' in data:
-                allied_players = parse_player_data(data['allied'])
-                server_cache['allied'] = allied_players
-            
-            # 解析轴心国数据
-            if 'axis' in data:
-                axis_players = parse_player_data(data['axis'])
-                server_cache['axis'] = axis_players
+            # 检查不同可能的数据结构
+            if isinstance(data, dict):
+                # 方式1: 直接包含 allied 和 axis 键
+                if 'allied' in data:
+                    allied_players = parse_player_data(data['allied'])
+                    server_cache['allied'] = allied_players
+                    logger.info(f"服务器 {server_num} 盟军玩家数: {len(allied_players)}")
+                
+                if 'axis' in data:
+                    axis_players = parse_player_data(data['axis'])
+                    server_cache['axis'] = axis_players
+                    logger.info(f"服务器 {server_num} 轴心玩家数: {len(axis_players)}")
+                
+                # 方式2: 包含 teams 字典
+                if 'teams' in data:
+                    teams = data['teams']
+                    if isinstance(teams, dict):
+                        for team_key, team_data in teams.items():
+                            logger.info(f"服务器 {server_num} 发现队伍: {team_key}")
+                            if 'allied' in team_key.lower() or team_key == '1':
+                                allied_players = parse_player_data(team_data)
+                                server_cache['allied'] = allied_players
+                                logger.info(f"服务器 {server_num} 盟军玩家数: {len(allied_players)}")
+                            elif 'axis' in team_key.lower() or team_key == '0':
+                                axis_players = parse_player_data(team_data)
+                                server_cache['axis'] = axis_players
+                                logger.info(f"服务器 {server_num} 轴心玩家数: {len(axis_players)}")
+                
+                # 方式3: 直接遍历所有键寻找队伍数据
+                if not server_cache:
+                    for key, value in data.items():
+                        if isinstance(value, dict) and 'squads' in value:
+                            logger.info(f"服务器 {server_num} 发现可能的队伍数据: {key}")
+                            players = parse_player_data(value)
+                            if players:
+                                # 根据第一个玩家的队伍信息判断
+                                first_player_team = players[0].get('team', '')
+                                if '盟军' in first_player_team or 'allied' in first_player_team.lower():
+                                    server_cache['allied'] = players
+                                    logger.info(f"服务器 {server_num} 识别为盟军数据: {len(players)} 人")
+                                elif '轴心' in first_player_team or 'axis' in first_player_team.lower():
+                                    server_cache['axis'] = players
+                                    logger.info(f"服务器 {server_num} 识别为轴心数据: {len(players)} 人")
             
             server_key = f"server_{server_num}"
             new_cache[server_key] = server_cache
@@ -181,8 +232,8 @@ def create_player_table_message(players: List[Dict[str, Any]], team_name: str) -
     message = f"🎮 {team_name} ({len(players)}人)\n"
     message += "=" * 40 + "\n"
     
-    # 按分数排序（战斗分数 + 进攻分数 + 防守分数 + 支援分数）
-    sorted_players = sorted(players, key=lambda p: p['combat'] + p['offense'] + p['defense'] + p['support'], reverse=True)
+    # 按等级排序
+    sorted_players = sorted(players, key=lambda p: p['level'], reverse=True)
     
     for i, player in enumerate(sorted_players, 1):
         # 基本信息行
@@ -193,20 +244,17 @@ def create_player_table_message(players: List[Dict[str, Any]], team_name: str) -
         message += f"{i:2d}. {vip_mark}{clan_tag}{name}\n"
         
         # UID信息
-        message += f"    🆔 UID: {player['player_id'][:16]}...\n"
+        player_id = player['player_id'] or "未知"
+        if len(player_id) > 20:
+            uid_display = f"{player_id[:20]}..."
+        else:
+            uid_display = player_id
+        message += f"    🆔 UID: {uid_display}\n"
         
         # 阵营和小队信息
         squad_info = f"小队{player['squad'].upper()}" if player['squad'] else "无小队"
         role_name = format_role_name(player['role'])
         message += f"    🏷️ {squad_info} | {role_name} | Lv.{player['level']}\n"
-        
-        # 战斗数据
-        kd_ratio = player['kills'] / player['deaths'] if player['deaths'] > 0 else player['kills']
-        message += f"    ⚔️ K/D: {player['kills']}/{player['deaths']} ({kd_ratio:.2f})\n"
-        
-        # 分数数据
-        total_score = player['combat'] + player['offense'] + player['defense'] + player['support']
-        message += f"    📊 总分: {total_score} (战斗:{player['combat']} 攻击:{player['offense']} 防守:{player['defense']} 支援:{player['support']})\n"
         
         # 平台信息
         platform = format_platform_name(player['platform'])
