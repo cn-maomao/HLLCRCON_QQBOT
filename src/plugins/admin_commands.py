@@ -891,7 +891,9 @@ async def handle_admin_help(bot: Bot, event: Event):
         sections.append(examples)
         
         # 创建转发消息
-        forward_messages = create_forward_message(bot, sections, "管理功能帮助")
+        # 将sections转换为(发送者名称, 消息内容)的元组列表
+        content_sections = [("CRCON机器人", section) for section in sections[1:]]  # 跳过标题
+        forward_messages = create_forward_message(bot, sections[0], content_sections)  # sections[0]是标题
         
         # 发送转发消息
         try:
