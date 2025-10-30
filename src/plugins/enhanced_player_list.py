@@ -130,9 +130,9 @@ async def update_player_cache():
             
             # 检查不同可能的数据结构
             if isinstance(data, dict):
-                # 方式1: 直接包含 allied 和 axis 键
-                if 'allied' in data:
-                    allied_players = parse_player_data(data['allied'])
+                # 方式1: 直接包含 allies 和 axis 键
+                if 'allies' in data:
+                    allied_players = parse_player_data(data['allies'])
                     server_cache['allied'] = allied_players
                     logger.info(f"服务器 {server_num} 盟军玩家数: {len(allied_players)}")
                 
@@ -147,7 +147,7 @@ async def update_player_cache():
                     if isinstance(teams, dict):
                         for team_key, team_data in teams.items():
                             logger.info(f"服务器 {server_num} 发现队伍: {team_key}")
-                            if 'allied' in team_key.lower() or team_key == '1':
+                            if 'allied' in team_key.lower() or 'allies' in team_key.lower() or team_key == '1':
                                 allied_players = parse_player_data(team_data)
                                 server_cache['allied'] = allied_players
                                 logger.info(f"服务器 {server_num} 盟军玩家数: {len(allied_players)}")
@@ -289,6 +289,9 @@ async def handle_enhanced_player_list(bot: Bot, event: Event, args: Message = Co
         if not player_data_cache:
             await enhanced_player_list.finish("❌ 无法获取玩家数据，请稍后重试")
         
+        # 获取群组ID
+        group_id = str(event.group_id) if hasattr(event, 'group_id') else None
+        
         # 如果指定了服务器编号，只显示该服务器的数据
         if server_num:
             server_key = f"server_{server_num}"
@@ -308,13 +311,13 @@ async def handle_enhanced_player_list(bot: Bot, event: Event, args: Message = Co
             
             # 添加标题消息
             update_time_str = last_update_time.strftime("%H:%M:%S") if last_update_time else "未知"
-            server_name = get_server_name(server_num)
+            server_name = get_server_name(server_num, group_id)
             title_msg = f"🎮 {server_name} - 详细在线玩家列表\n👥 总人数: {total_players}人\n🕐 更新时间: {update_time_str}\n⏰ 每6分钟自动更新"
             
             forward_messages.append({
                 "type": "node",
                 "data": {
-                    "name": "CRCON机器人",
+                    "name": server_name,
                     "uin": str(bot.self_id),
                     "content": title_msg
                 }
@@ -326,7 +329,7 @@ async def handle_enhanced_player_list(bot: Bot, event: Event, args: Message = Co
                 forward_messages.append({
                     "type": "node",
                     "data": {
-                        "name": "CRCON机器人",
+                        "name": server_name,
                         "uin": str(bot.self_id),
                         "content": allies_msg
                     }
@@ -338,7 +341,7 @@ async def handle_enhanced_player_list(bot: Bot, event: Event, args: Message = Co
                 forward_messages.append({
                     "type": "node",
                     "data": {
-                        "name": "CRCON机器人",
+                        "name": server_name,
                         "uin": str(bot.self_id),
                         "content": axis_msg
                     }
