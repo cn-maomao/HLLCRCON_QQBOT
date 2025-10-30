@@ -159,6 +159,20 @@ class CRCONAPIClient:
             ))
         
         return players
+
+    async def get_team_view(self) -> Optional[Dict[str, Any]]:
+        """
+        获取团队视图数据
+        
+        Returns:
+            团队视图数据字典，包含盟军和轴心国的详细信息
+        """
+        try:
+            response = await self._request("GET", "get_team_view")
+            return response.get("result")
+        except Exception as e:
+            logger.error(f"获取团队视图数据失败: {e}")
+            return None
     
     async def get_player_info(self, player_id: str) -> Optional[Dict[str, Any]]:
         """

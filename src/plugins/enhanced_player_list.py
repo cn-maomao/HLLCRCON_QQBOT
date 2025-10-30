@@ -41,17 +41,14 @@ async def get_team_view_data_from_api(server_num: int) -> Optional[Dict[str, Any
         base_url = get_api_base_url(server_num)
         api_client = CRCONAPIClient(base_url, config.crcon_api_token)
         
-        # 获取玩家数据
+        # 获取团队视图数据
         async with api_client as client:
-            players_data = await client.get_detailed_players()
+            team_view_data = await client.get_team_view()
             
-            if not players_data:
+            if not team_view_data:
                 return None
             
-            return {
-                'allied': players_data.get('allied', {}),
-                'axis': players_data.get('axis', {})
-            }
+            return team_view_data
             
     except Exception as e:
         logger.error(f"获取服务器 {server_num} 团队视图数据失败: {e}")
