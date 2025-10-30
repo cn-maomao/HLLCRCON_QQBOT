@@ -25,6 +25,7 @@ logger.add(
 
 # 在这里加载插件
 nonebot.load_builtin_plugins("echo")  # 内置插件
+nonebot.load_plugin("nonebot_plugin_apscheduler")  # 定时任务插件
 nonebot.load_plugins("src/plugins")  # 本地插件
 
 # 启动事件

@@ -1,7 +1,7 @@
 [project]
 name = "crcon-qqbot"
-version = "1.0.0"
-description = "QQ机器人对接人间地狱CRCON管理面板API"
+version = "2.0.0"
+description = "QQ机器人对接人间地狱CRCON管理面板API - 支持多服务器和权限组管理"
 authors = [
     {name = "Your Name", email = "your.email@example.com"},
 ]
@@ -14,6 +14,9 @@ dependencies = [
     "pydantic>=2.5.2",
     "python-dotenv>=1.0.0",
     "loguru>=0.7.2",
+    "PyYAML>=6.0.1",
+    "watchdog>=3.0.0",
+    "typing-extensions>=4.8.0",
 ]
 requires-python = ">=3.8"
 readme = "README.md"

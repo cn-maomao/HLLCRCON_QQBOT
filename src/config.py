@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from typing import List, Optional
+from typing import List, Optional, Union, Dict
 import os
 
 try:
@@ -24,18 +24,21 @@ class Config(BaseSettings):
     onebot_ws_urls: List[str] = Field(default=["ws://127.0.0.1:3001"], description="OneBot WebSocket地址")
     onebot_access_token: Optional[str] = Field(default=None, description="OneBot访问令牌")
     
-    # CRCON API 配置
+    # CRCON API 配置（保留向后兼容性）
     crcon_api_base_url_1: str = Field(default="http://127.0.0.1:8010/api", description="服务器1 API地址")
     crcon_api_base_url_2: str = Field(default="http://127.0.0.1:8011/api", description="服务器2 API地址")
     crcon_api_base_url_3: str = Field(default="http://127.0.0.1:8012/api", description="服务器3 API地址")
     crcon_api_base_url_4: str = Field(default="http://127.0.0.1:8013/api", description="服务器4 API地址")
     crcon_api_token: str = Field(default="", description="CRCON API令牌")
     
-    # 服务器名称配置
+    # 服务器名称配置（保留向后兼容性）
     server_name_1: str = Field(default="服务器1", description="服务器1名称")
     server_name_2: str = Field(default="服务器2", description="服务器2名称")
     server_name_3: str = Field(default="服务器3", description="服务器3名称")
     server_name_4: str = Field(default="服务器4", description="服务器4名称")
+    
+    # 多服务器配置文件路径
+    servers_config_file: str = Field(default="servers_config.yaml", description="多服务器配置文件路径")
     
     # 日志配置
     log_level: str = Field(default="INFO", description="日志级别")
@@ -73,9 +76,25 @@ class Config(BaseSettings):
 # 全局配置实例
 config = Config()
 
+# 导入多服务器管理器
+try:
+    from .multi_server_manager import multi_server_manager
+    _use_multi_server = True
+except ImportError:
+    _use_multi_server = False
+    multi_server_manager = None
 
-def get_api_base_url(server_num: int = 1) -> str:
+
+def get_api_base_url(server_num: Union[str, int] = 1) -> str:
     """获取指定服务器的API基础URL"""
+    # 优先使用多服务器管理器
+    if _use_multi_server and multi_server_manager:
+        url = multi_server_manager.get_api_base_url(server_num)
+        if url:
+            return url
+    
+    # 回退到传统配置方式
+    server_num = int(server_num) if isinstance(server_num, str) and server_num.isdigit() else server_num
     if server_num == 1:
         return config.crcon_api_base_url_1
     elif server_num == 2:
@@ -88,8 +107,16 @@ def get_api_base_url(server_num: int = 1) -> str:
         raise ValueError(f"Invalid server number: {server_num}")
 
 
-def get_server_name(server_num: int = 1) -> str:
+def get_server_name(server_num: Union[str, int] = 1) -> str:
     """获取指定服务器的名称"""
+    # 优先使用多服务器管理器
+    if _use_multi_server and multi_server_manager:
+        name = multi_server_manager.get_server_name(server_num)
+        if name and not name.startswith("未知服务器"):
+            return name
+    
+    # 回退到传统配置方式
+    server_num = int(server_num) if isinstance(server_num, str) and server_num.isdigit() else server_num
     if server_num == 1:
         return config.server_name_1
     elif server_num == 2:
@@ -102,9 +129,41 @@ def get_server_name(server_num: int = 1) -> str:
         raise ValueError(f"Invalid server number: {server_num}")
 
 
-def validate_server_num(server_num: int) -> bool:
+def validate_server_num(server_num: Union[str, int]) -> bool:
     """验证服务器编号是否有效"""
-    return server_num in [1, 2, 3, 4]
+    # 优先使用多服务器管理器
+    if _use_multi_server and multi_server_manager:
+        return multi_server_manager.validate_server(server_num)
+    
+    # 回退到传统验证方式
+    try:
+        server_num = int(server_num) if isinstance(server_num, str) and server_num.isdigit() else server_num
+        return server_num in [1, 2, 3, 4]
+    except (ValueError, TypeError):
+        return False
+
+
+def get_all_servers() -> List[Dict[str, str]]:
+    """获取所有可用服务器列表"""
+    if _use_multi_server and multi_server_manager:
+        return multi_server_manager.get_server_list(enabled_only=True)
+    
+    # 回退到传统方式
+    return [
+        {"id": "1", "name": config.server_name_1, "display_name": "1", "description": "服务器1"},
+        {"id": "2", "name": config.server_name_2, "display_name": "2", "description": "服务器2"},
+        {"id": "3", "name": config.server_name_3, "display_name": "3", "description": "服务器3"},
+        {"id": "4", "name": config.server_name_4, "display_name": "4", "description": "服务器4"},
+    ]
+
+
+def get_server_display_name(server_num: Union[str, int]) -> str:
+    """获取服务器显示名称"""
+    if _use_multi_server and multi_server_manager:
+        return multi_server_manager.get_server_display_name(server_num)
+    
+    # 回退到传统方式
+    return str(server_num)
 
 
 def is_admin_user(user_id: str) -> bool:
@@ -192,5 +251,7 @@ class Constants:
 __all__ = [
     "Config", "config", "Constants",
     "get_api_base_url", "get_server_name", "validate_server_num",
-    "is_admin_user", "is_admin_group", "is_player_group"
+    "get_all_servers", "get_server_display_name",
+    "is_admin_user", "is_admin_group", "is_player_group",
+    "multi_server_manager"
 ]

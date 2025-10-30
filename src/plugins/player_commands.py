@@ -62,7 +62,6 @@ async def get_server_info(server_num: int) -> str:
         
         # 解析地图信息
         current_map_name = "未知"
-        next_map_name = "未知"
         
         # 处理当前地图信息
         if isinstance(gamestate.current_map, dict):
@@ -97,39 +96,6 @@ async def get_server_info(server_num: int) -> str:
             else:
                 current_map_name = gamestate.current_map
         
-        # 处理下一张地图信息
-        if isinstance(gamestate.next_map, dict):
-            # 优先使用嵌套的 map.id 字段
-            map_id = gamestate.next_map.get('map', {}).get('id', '')
-            if not map_id:
-                # 如果没有嵌套的 map.id，使用顶级 id
-                map_id = gamestate.next_map.get('id', '')
-            
-            if map_id and map_id.lower() != 'unknown':
-                # 使用 MapList 转换为中文名称，并结合游戏模式
-                game_mode = gamestate.next_map.get('game_mode', '')
-                mode_text = ""
-                if game_mode == 'offensive':
-                    mode_text = " · 攻防"
-                elif game_mode == 'warfare':
-                    mode_text = " · 冲突"
-                elif game_mode == 'skirmish':
-                    mode_text = " · 遭遇战"
-                
-                if MapList:
-                    next_map_name = MapList.parse_map_name(map_id) + mode_text
-                else:
-                    next_map_name = map_id + mode_text
-            else:
-                next_map_name = gamestate.next_map.get('pretty_name', 
-                               gamestate.next_map.get('name', '未知'))
-        elif isinstance(gamestate.next_map, str):
-            # 尝试解析字符串格式的地图ID
-            if MapList:
-                next_map_name = MapList.parse_map_name(gamestate.next_map)
-            else:
-                next_map_name = gamestate.next_map
-        
         # 构建消息
         server_name = get_server_name(server_num)
         message = f"🎮 {server_name} 状态信息\n"
@@ -145,8 +111,7 @@ async def get_server_info(server_num: int) -> str:
         else:
             message += f"⏰ 剩余时间：未知\n"
             
-        message += f"🗺️ 当前地图：{current_map_name}\n"
-        message += f"➡️ 下一张地图：{next_map_name}"
+        message += f"🗺️ 当前地图：{current_map_name}"
         
         return message
 
@@ -754,7 +719,7 @@ async def handle_help(bot: Bot, event: Event):
         })
         
         # 添加在线玩家查询说明
-        players_msg = "👥 在线玩家查询：\n/在线玩家 [服务器编号]\n/玩家列表 [服务器编号]\n/players [1|2]\n/online [1|2]"
+        players_msg = "👥 在线玩家查询：\n/在线玩家 [服务器编号]\n/玩家列表 [服务器编号]\n/players [1|2]\n/online [1|2]\n/详细玩家列表 - 查看详细玩家信息（包含UID、阵营、兵种等）\n/详细在线玩家 - 同上\n/玩家详情 - 同上"
         forward_messages.append({
             "type": "node",
             "data": {
@@ -764,8 +729,30 @@ async def handle_help(bot: Bot, event: Event):
             }
         })
         
+        # 添加服务器管理说明
+        server_mgmt_msg = "🖥️ 服务器管理：\n/服务器列表 - 查看所有可用服务器\n/服务器详情 [服务器编号] - 查看指定服务器详细信息\n/重载配置 - 重新加载服务器配置（管理员）"
+        forward_messages.append({
+            "type": "node",
+            "data": {
+                "name": "CRCON机器人",
+                "uin": str(bot.self_id),
+                "content": server_mgmt_msg
+            }
+        })
+        
+        # 添加权限管理说明
+        permission_msg = "🔐 权限管理：\n/权限组列表 - 查看所有权限组\n/权限组详情 [组ID] - 查看权限组详细信息\n/我的权限 - 查看自己的权限信息\n/添加权限 [QQ号] [组ID] [权限级别] - 添加权限（管理员）\n/移除权限 [QQ号] [组ID] - 移除权限（管理员）\n/重载权限配置 - 重新加载权限配置（管理员）"
+        forward_messages.append({
+            "type": "node",
+            "data": {
+                "name": "CRCON机器人",
+                "uin": str(bot.self_id),
+                "content": permission_msg
+            }
+        })
+        
         # 添加使用说明
-        usage_msg = "📝 使用说明：\n• 服务器编号：1、2或3，默认为1\n• 玩家名称支持模糊匹配\n• 所有指令都支持别名"
+        usage_msg = "📝 使用说明：\n• 服务器编号：1、2、3或4，默认为1\n• 玩家名称支持模糊匹配\n• 详细玩家列表每6分钟自动更新数据\n• 支持动态配置文件管理\n• 所有指令都支持别名"
         forward_messages.append({
             "type": "node",
             "data": {
@@ -776,7 +763,7 @@ async def handle_help(bot: Bot, event: Event):
         })
         
         # 添加示例
-        example_msg = "💡 使用示例：\n/服务器信息 1\n/查询vip PlayerName 2\n/在线玩家 1"
+        example_msg = "💡 使用示例：\n/服务器信息 1\n/查询vip PlayerName 2\n/在线玩家 1\n/详细玩家列表 - 查看详细玩家信息（含UID、阵营等）\n/服务器列表 - 查看所有可用服务器\n/权限组列表 - 查看权限组\n/我的权限 - 查看自己权限"
         forward_messages.append({
             "type": "node",
             "data": {
